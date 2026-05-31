@@ -135,6 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Setup Custom Drag Resizer
+  setupSidebarResizer();
+
   // Setup Quantization Simulator Interactive Controls
   setupQuantizationSimulator();
 
@@ -248,21 +251,13 @@ async function loadLesson(lessonId) {
       notebook.cells.forEach(cell => {
         const sourceText = cell.source.join('');
         if (cell.cell_type === 'markdown') {
-          // Simple local Markdown-to-HTML parser for rendering
-          let html = sourceText
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/`(.*?)`/g, '<code class="math-inline">$1</code>')
-            .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
-            .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
-            .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
-            .replace(/^- (.*?)$/gm, '<li>$1</li>');
-            
+          // Use high-fidelity marked.js parser for rendering notebook markdown cells
+          const html = window.marked ? window.marked.parse(sourceText) : sourceText;
           notebookHtml += `
             <div class="notebook-cell markdown-cell">
               <div class="cell-num"></div>
               <div class="cell-content">
-                <p>${html}</p>
+                ${html}
               </div>
             </div>
           `;
@@ -277,7 +272,7 @@ async function loadLesson(lessonId) {
             <div class="notebook-cell code-cell">
               <div class="cell-num">In [${codeCellCount++}]:</div>
               <div class="cell-content">
-                <pre><code>${escapedCode}</code></pre>
+                <pre><code class="language-python">${escapedCode}</code></pre>
               </div>
             </div>
           `;
@@ -316,6 +311,12 @@ async function loadLesson(lessonId) {
       
       window.scrollTo({ top: 0, behavior: 'smooth' });
       lucide.createIcons();
+      
+      // Trigger Prism syntax highlighting for Python code cells
+      if (window.Prism) {
+        window.Prism.highlightAll();
+      }
+      
       if (window.MathJax && window.MathJax.typesetPromise) {
         window.MathJax.typesetPromise();
       }
@@ -605,4 +606,65 @@ function copyCode(btn) {
       }, 2000);
     });
   }
+}
+
+/**
+ * Sets up horizontal dragging and resizability for the sidebar layout using client boundaries
+ */
+function setupSidebarResizer() {
+  const resizer = document.getElementById('sidebar-resizer');
+  const sidebar = document.querySelector('.app-sidebar');
+  if (!resizer || !sidebar) return;
+
+  let isResizing = false;
+
+  resizer.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    resizer.classList.add('active');
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    let newWidth = e.clientX;
+    
+    // Constraints: min 200px, max 500px for robust layout structure
+    if (newWidth >= 200 && newWidth <= 500) {
+      sidebar.style.width = `${newWidth}px`;
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      resizer.classList.remove('active');
+    }
+  });
+
+  // Touch Support for mobile and tablet dragging layout customization
+  resizer.addEventListener('touchstart', (e) => {
+    isResizing = true;
+    resizer.classList.add('active');
+  });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!isResizing) return;
+    if (e.touches.length > 0) {
+      let newWidth = e.touches[0].clientX;
+      if (newWidth >= 200 && newWidth <= 500) {
+        sidebar.style.width = `${newWidth}px`;
+      }
+    }
+  });
+
+  document.addEventListener('touchend', () => {
+    if (isResizing) {
+      isResizing = false;
+      resizer.classList.remove('active');
+    }
+  });
 }

@@ -156,7 +156,6 @@ body.dark-theme {
   width: 320px;
   min-width: 250px;
   max-width: 480px;
-  resize: horizontal;
   overflow-x: hidden;
   overflow-y: auto;
   flex-shrink: 0;
@@ -1193,4 +1192,44 @@ input[type="range"]::-webkit-slider-thumb:hover {
   line-height: 1.5;
   color: #e5e7eb;
 }
+
+/* Sidebar Resizer drag handle divider */
+.sidebar-resizer {
+  width: 8px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 100;
+  position: relative;
+  flex-shrink: 0;
+  margin-left: -4px;
+  margin-right: -4px;
+  transition: background var(--transition-fast);
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer.active {
+  background: var(--accent-primary);
+  box-shadow: 0 0 10px var(--accent-primary);
+}
+
+.app-sidebar.collapsed + .sidebar-resizer {
+  display: none !important;
+}
+
+/* Prism Syntax Highlighting Custom Overrides */
+pre[class*="language-"] {
+  background: #090d16 !important;
+  border: 1px solid var(--border-glass) !important;
+  border-radius: 12px !important;
+  margin: 0 !important;
+  padding: 1.25rem !important;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+code[class*="language-"] {
+  font-family: var(--font-code) !important;
+  font-size: 0.88rem !important;
+  text-shadow: none !important;
+}
+
 

@@ -21,6 +21,13 @@
     };
   </script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <!-- Marked.js for Jupyter Notebook markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Prism.js for high-fidelity code syntax highlighting -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-kotlin.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-theme">
@@ -198,6 +205,9 @@
         </div>
       </nav>
     </aside>
+
+    <!-- Sidebar Drag Resizer Divider -->
+    <div class="sidebar-resizer" id="sidebar-resizer"></div>
 
     <!-- Main Content Reader -->
     <main class="app-main">
