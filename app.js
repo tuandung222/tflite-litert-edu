@@ -249,6 +249,11 @@ async function loadLesson(lessonId) {
     // Re-instantiate icons inside the newly generated content
     lucide.createIcons();
 
+    // Re-instantiate MathJax math formulas in dynamically loaded content
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+
   } catch (err) {
     console.error('Failed to load lesson:', err);
     lessonViewer.innerHTML = `
