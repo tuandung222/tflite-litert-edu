@@ -93,6 +93,31 @@ const lessons = {
     title: 'Notebook 2: Đóng gói Metadata & Chạy kiểm thử mô hình bằng Python',
     meta: { duration: 'Giáo trình thực hành', difficulty: 'Nâng cao', category: 'Notebook' },
     keywords: 'notebook, jupyter, metadata, labels, tflite-support, metadatawriter, python interpreter, invoke, get_tensor'
+  },
+  '6.1': {
+    title: 'Custom Ops: Viết, biên dịch và đăng ký Custom Operator C++ tự thiết kế',
+    meta: { duration: '20 phút', difficulty: 'Chuyên gia', category: 'Nghiên cứu & Tối ưu' },
+    keywords: 'custom op, custom operator, c++, register, tf.lite.tfliteconverter, mutableopresolver, cmake, android ndk, flatbuffers, prepare, eval'
+  },
+  '6.2': {
+    title: 'Tuning & Fallback: Phân tích phân mảnh đồ thị và triệt tiêu độ trễ CPU-GPU',
+    meta: { duration: '18 phút', difficulty: 'Chuyên gia', category: 'Nghiên cứu & Tối ưu' },
+    keywords: 'delegate fallback, graph partitioning, profiling, memory copy, host device copy, overhead, op resolver, gpu delegate, npu'
+  },
+  '6.3': {
+    title: 'Advanced Quantization: Sensitivity Profiling, KL Divergence & Bias Correction',
+    meta: { duration: '22 phút', difficulty: 'Chuyên gia', category: 'Nghiên cứu & Tối ưu' },
+    keywords: 'kl divergence, kullback-leibler, mse, sensitivity analysis, sensitivity peak, outlier aware, mixed precision, bias correction, weight quantization, activations'
+  },
+  '6.4': {
+    title: 'Zero-Copy Execution: AHardwareBuffer & C++ Direct Memory Mappings',
+    meta: { duration: '20 phút', difficulty: 'Chuyên gia', category: 'Nghiên cứu & Tối ưu' },
+    keywords: 'zero copy, zero-copy, ahardwarebuffer, hardware buffer, gpu texture, native pointer, direct bytebuffer, ndk, opencl, vulkan'
+  },
+  '6.5': {
+    title: 'On-Device Personalization: Huấn luyện mô hình song song ngược (Backprop) cục bộ',
+    meta: { duration: '25 phút', difficulty: 'Chuyên gia', category: 'Nghiên cứu & Tối ưu' },
+    keywords: 'on-device training, personalization, training subgraph, flatbuffer backward, gradients, weight updates, loss function, optimizer, federated learning, differential privacy'
   }
 };
 

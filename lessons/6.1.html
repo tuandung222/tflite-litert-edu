@@ -1,0 +1,168 @@
+<p>Khi đưa các mô hình nghiên cứu (State-of-the-Art) từ PyTorch hoặc TensorFlow sang thiết bị di động, rào cản phổ biến nhất là <strong>"Unsupported Operators" (Các toán tử chưa được LiteRT hỗ trợ sẵn)</strong>. Ví dụ, các toán tử biến đổi phi tuyến phức tạp, các cơ chế Attention tự thiết kế hoặc các toán tử xử lý ảnh tùy biến thường không nằm trong danh mục built-in của runtime di động.</p>
+
+<p>Để giải quyết bài toán này trong môi trường sản phẩm thương mại thực tế, các Research Scientist và ML Engineer cần nắm vững quy trình 3 bước khép kín: <strong>Xuất mô hình kèm cờ Custom Op &rarr; Viết Kernel thực thi bằng C++ Native &rarr; Đăng ký thông qua MutableOpResolver trên Android.</strong></p>
+
+<h2>1. Quy trình Xuất mô hình chứa Custom Op từ Python</h2>
+<p>Khi chuyển đổi mô hình bằng Python, nếu Converter phát hiện toán tử lạ, nó sẽ báo lỗi và dừng tiến trình. Chúng ta cần hướng dẫn bộ chuyển đổi bỏ qua kiểm tra này và đánh dấu toán tử đó là một Custom Operator trong file FlatBuffer nhị phân đầu ra <code>.tflite</code>.</p>
+
+<pre><code class="language-python">import tensorflow as tf
+
+# Giả lập mô hình Keras chứa toán tử tùy biến "CustomArgMax"
+class CustomModel(tf.Module):
+    @tf.function(input_signature=[tf.TensorSpec(shape=[1, 10], dtype=tf.float32)])
+    def __call__(self, x):
+        # Ta đánh dấu một toán tử custom bằng cách bọc nó qua tf.raw_ops
+        # Hoặc dùng tf.py_function để xuất thô
+        return tf.raw_ops.CustomArgMax(input=x, name="MyCustomOp")
+
+model = CustomModel()
+
+# Cấu hình Converter
+converter = tf.lite.TFLiteConverter.from_concrete_functions([model.__call__.get_concrete_function()])
+
+# QUAN TRỌNG: Kích hoạt cờ cho phép toán tử Custom
+converter.allow_custom_ops = True
+
+tflite_model = converter.convert()
+with open('model_with_custom_op.tflite', 'wb') as f:
+    f.write(tflite_model)
+print("Xuất mô hình thành công với Custom Op định danh 'CustomArgMax'!")
+</code></pre>
+
+<h2>2. Viết Kernel thực thi toán tử bằng C++ Native</h2>
+<p>Khi mô hình chạy trên thiết bị di động, bộ Interpreter của LiteRT sẽ đọc FlatBuffer. Khi gặp toán tử <code>CustomArgMax</code>, nó sẽ tìm kiếm một hàm C++ đã đăng ký tương ứng. Ta cần triển khai toán tử này bằng C++ Native sử dụng API cấp thấp của LiteRT.</p>
+
+<p>Mỗi Custom Op trong LiteRT được định nghĩa bởi một cấu trúc <code>TfLiteRegistration</code> chứa 4 con trỏ hàm chính đại diện cho vòng đời thực thi:</p>
+<ol>
+  <li><strong>Init:</strong> Cấp phát bộ nhớ đệm nội bộ hoặc lưu trữ các siêu tham số (Attributes) đọc từ FlatBuffer.</li>
+  <li><strong>Free:</strong> Thu hồi toàn bộ bộ nhớ đã cấp phát trong hàm <code>Init</code>.</li>
+  <li><strong>Prepare:</strong> Xác định hình dạng (Shape) và kiểu dữ liệu (Dtype) của Tensor đầu ra dựa trên Tensor đầu vào. Hàm này được chạy 1 lần duy nhất lúc load mô hình hoặc khi resize Tensor đầu vào.</li>
+  <li><strong>Eval:</strong> Tiến hành tính toán toán học thực tế trên vùng nhớ Tensor thô.</li>
+</ol>
+
+<pre><code class="language-cpp">#include "tensorflow/lite/core/c/common.h"
+#include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
+
+namespace my_project {
+namespace custom_ops {
+
+// 1. Hàm khởi tạo (Init) - Không dùng bộ nhớ đệm thì trả về nullptr
+void* CustomArgMaxInit(TfLiteContext* context, const char* buffer, size_t length) {
+    return nullptr; 
+}
+
+// 2. Hàm giải phóng (Free)
+void CustomArgMaxFree(TfLiteContext* context, void* buffer) {}
+
+// 3. Hàm chuẩn bị cấu trúc (Prepare)
+TfLiteStatus CustomArgMaxPrepare(TfLiteContext* context, TfLiteNode* node) {
+    // Kiểm tra số lượng input/output tensor đầu vào
+    TF_LITE_ENSURE_EQ(context, node->inputs->size, 1);
+    TF_LITE_ENSURE_EQ(context, node->outputs->size, 1);
+
+    const TfLiteTensor* input = &context->tensors[node->inputs->data[0]];
+    TfLiteTensor* output = &context->tensors[node->outputs->data[0]];
+
+    // Đảm bảo kiểu dữ liệu đầu vào là Float32
+    TF_LITE_ENSURE_TYPES_EQ(context, input->type, kTfLiteFloat32);
+    
+    // Cấu hình kiểu dữ liệu đầu ra là Int32
+    output->type = kTfLiteInt32;
+
+    // Thiết lập hình dạng của tensor đầu ra (ví dụ: rút gọn chiều cuối)
+    TfLiteIntArray* output_size = TfLiteIntArrayCreate(1);
+    output_size->data[0] = input->dims->data[0]; // Giữ lại batch size
+    return context->ResizeTensor(context, output, output_size);
+}
+
+// 4. Hàm thực thi thuật toán chính (Eval)
+TfLiteStatus CustomArgMaxEval(TfLiteContext* context, TfLiteNode* node) {
+    const TfLiteTensor* input = &context->tensors[node->inputs->data[0]];
+    TfLiteTensor* output = &context->tensors[node->outputs->data[0]];
+
+    const float* input_data = GetTensorData<float>(input);
+    int32_t* output_data = GetTensorData<int32_t>(output);
+
+    int batch_size = input->dims->data[0];
+    int num_elements = input->dims->data[1];
+
+    for (int b = 0; b < batch_size; ++b) {
+        float max_val = -1e9;
+        int max_idx = -1;
+        for (int i = 0; i < num_elements; ++i) {
+            float val = input_data[b * num_elements + i];
+            if (val > max_val) {
+                max_val = val;
+                max_idx = i;
+            }
+        }
+        output_data[b] = max_idx; // Ghi kết quả index cực đại
+    }
+
+    return kTfLiteOk;
+}
+
+// Đóng gói đăng ký toán tử
+TfLiteRegistration* Register_CustomArgMax() {
+    static TfLiteRegistration reg = {
+        CustomArgMaxInit,
+        CustomArgMaxFree,
+        CustomArgMaxPrepare,
+        CustomArgMaxEval
+    };
+    return &reg;
+}
+
+} // namespace custom_ops
+} // namespace my_project
+</code></pre>
+
+<h2>3. Đăng ký Custom Op trên Mobile (Android & C++)</h2>
+<p>Để biên dịch tệp C++ này vào ứng dụng Android, ML Engineer sẽ sử dụng <strong>Android NDK</strong> kết hợp với CMake. Thêm cấu hình build trong file <code>CMakeLists.txt</code> của dự án C++:</p>
+
+<pre><code class="language-cmake">cmake_minimum_required(VERSION 3.10.2)
+project(custom_litert_jni)
+
+# Liên kết mã nguồn toán tử
+add_library(custom_litert_jni SHARED
+            custom_argmax.cc
+            jni_wrapper.cc)
+
+# Tìm và liên kết thư viện LiteRT shared library (libtensorflowlite_jni.so)
+target_link_libraries(custom_litert_jni tensorflowlite)
+</code></pre>
+
+<p>Tại lớp Wrapper C++ (hoặc qua JNI), thay vì khởi tạo Interpreter thô bằng <code>BuiltinOpResolver</code> mặc định (vốn chỉ chứa các toán tử có sẵn của Google), ta chuyển sang sử dụng <strong><code>MutableOpResolver</code></strong> để tự tay đăng ký Custom Op của mình:</p>
+
+<pre><code class="language-cpp">#include "tensorflow/lite/model.h"
+#include "tensorflow/lite/interpreter.h"
+#include "tensorflow/lite/kernels/register.h"
+
+// JNI function khởi tạo Interpreter
+void CreateCustomInterpreter() {
+    std::unique_ptr<tflite::FlatBufferModel> model =
+        tflite::FlatBufferModel::BuildFromFile("model_with_custom_op.tflite");
+
+    // 1. Tạo một bộ giải quyết toán tử tùy biến
+    tflite::ops::builtin::BuiltinOpResolver resolver;
+    
+    // 2. Đăng ký Custom Operator của chúng ta
+    resolver.AddCustom("CustomArgMax", my_project::custom_ops::Register_CustomArgMax());
+
+    // 3. Khởi dựng Interpreter với resolver tùy chỉnh
+    tflite::InterpreterBuilder builder(*model, resolver);
+    std::unique_ptr<tflite::Interpreter> interpreter;
+    builder(&interpreter);
+    
+    // Bắt đầu inference bình thường!
+    interpreter->AllocateTensors();
+}
+</code></pre>
+
+<div class="callout callout-tip">
+  <i data-lucide="help-circle" class="callout-icon"></i>
+  <div class="callout-content">
+    <span class="callout-title">Lời khuyên của chuyên gia sản phẩm:</span>
+    <p>Viết Custom Op bằng C++ mang lại hiệu năng tối đa nhưng tốn nhiều công sức bảo trì. Trước khi quyết định tự thiết kế toán tử, hãy kiểm tra xem bạn có thể kết hợp các toán tử toán học cơ bản có sẵn (ví dụ: <code>Reshape</code>, <code>Slice</code>, <code>Gather</code>) để giả lập thuật toán mong muốn hay không, tránh làm phình to kích thước file JNI nhị phân (<code>.so</code>) của ứng dụng di động.</p>
+  </div>
+</div>

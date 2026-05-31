@@ -1,0 +1,82 @@
+<p>Chuyển đổi một mô hình từ số thực Float32 sang số nguyên Int8 thường đi kèm với cái giá phải trả: <strong>sự sụt giảm độ chính xác (Accuracy Drop)</strong>. Đối với các bài toán nhạy cảm như chẩn đoán y tế, tự lái, hoặc sinh văn bản tự hồi quy (SLM), việc mất mát dù chỉ 1% accuracy cũng có thể làm vô hiệu hóa sản phẩm thương mại.</p>
+
+<p>Để tối ưu hóa lượng tử hóa ở cấp độ nghiên cứu khoa học chuyên sâu, chúng ta phải chuyển dịch từ việc lượng tử hóa mù quáng (Naive Quantization) sang phương pháp tối ưu hóa dựa trên toán học xác suất: <strong>Đo đạc độ lệch phân phối KL Divergence &rarr; Định vị độ nhạy cảm lớp Sensitivity Analysis &rarr; Hiệu chỉnh sai số Bias Correction.</strong></p>
+
+<h2>1. Đo đạc sai số phân phối bằng Kullback-Leibler (KL) Divergence</h2>
+<p>Khi ta ép dải giá trị thực $x \in [min, max]$ vào 256 thùng (buckets) của kiểu số nguyên 8-bit, ta đang làm méo dạng phân phối xác suất ban đầu của các kích hoạt (Activations). Để đo đạc mức độ méo này một cách khoa học, ta sử dụng <strong>Độ lệch Kullback-Leibler (KL Divergence)</strong> giữa phân phối thực $P$ (Float32) và phân phối lượng tử $Q$ (Int8):</p>
+
+<div class="math-block">
+  D_{KL}(P \parallel Q) = \sum_{i=1}^{N} P(i) \log \left( \frac{P(i)}{Q(i)} \right)
+</div>
+
+<p>Ý nghĩa toán học:</p>
+<ul>
+  <li>Nếu $D_{KL}(P \parallel Q) = 0$, phân phối lượng tử khớp hoàn hảo với phân phối gốc, không mất mát thông tin.</li>
+  <li>Mục tiêu của quá trình Calibration (Hiệu chuẩn bằng Representative Dataset) trong LiteRT là tìm kiếm một ngưỡng cắt (threshold) cực trị $[-\alpha, \alpha]$ sao cho cực tiểu hóa giá trị $D_{KL}(P \parallel Q)$. Việc loại bỏ các giá trị nhiễu ngoại lai (outliers) ở biên giúp bảo toàn độ phân giải cao cho các giá trị tập trung ở trung tâm.</li>
+</ul>
+
+<h2>2. Sensitivity Peak Analysis (Phân tích Đỉnh độ nhạy cảm)</h2>
+<p>Không phải tất cả các lớp (Layers) trong một mạng nơ-ron đều nhạy cảm với việc lượng tử hóa như nhau. Có những lớp khi ép xuống Int8 sẽ làm sụt giảm 10% độ chính xác của toàn mạng, trong khi những lớp khác hoàn toàn không ảnh hưởng. Ta tiến hành phân tích độ nhạy cảm từng lớp:</p>
+
+<pre><code class="language-python"># Giả lập thuật toán Sensitivity Profiling trong Python
+def profile_layer_sensitivity(model, representative_dataset):
+    baseline_accuracy = evaluate(model, representative_dataset)
+    sensitivity_scores = {}
+    
+    for name, layer in model.named_layers():
+        # 1. Chỉ lượng tử hóa tạm thời lớp hiện tại sang Int8
+        quantized_model = temporarily_quantize_layer(model, name)
+        
+        # 2. Đo đạc lại độ chính xác của toàn mạng
+        quant_accuracy = evaluate(quantized_model, representative_dataset)
+        
+        # 3. Tính toán độ sụt giảm
+        drop = baseline_accuracy - quant_accuracy
+        sensitivity_scores[name] = drop
+        print(f"Lớp: {name} | Sụt giảm Accuracy toàn mạng: {drop * 100:.3f}%")
+        
+    return sensitivity_scores
+</code></pre>
+
+<p><strong>Mixed-Precision Quantization (Lượng tử hóa đa độ chính xác):</strong></p>
+<p>Dựa trên bản đồ Sensitivity Score thu được, các layer có độ nhạy vượt quá một ngưỡng quy định (Sensitivity Peaks) sẽ được giữ lại ở kiểu dữ liệu dấu phẩy động <strong>Float16 hoặc Float32</strong>, trong khi phần lớn các lớp còn lại được chuyển sang <strong>Int8/Int4</strong> để giảm kích thước. Đây là chiến thuật duy trì sự cân bằng tối ưu giữa dung lượng tệp và chất lượng mô hình thương mại.</p>
+
+<h2>3. Outlier-Aware Quantization (Lượng tử hóa nhận diện ngoại lai)</h2>
+<p>Trong các mô hình sinh thế hệ mới như Small Language Models (SLMs) hoặc Transformers lớn, các kích hoạt trung gian thường xuất hiện các <strong>Outliers (Giá trị ngoại lai cực lớn)</strong> tập trung ở một số kênh đặc trưng (channels). </p>
+<p>Nếu ta áp dụng lượng tử hóa đối xứng cơ bản (Min-Max Quantization) trên toàn tensor, các Outliers này sẽ kéo giãn Scale factor $S$ ra cực lớn:</p>
+
+<div class="math-block">
+  S = \frac{\max(|x|)}{127}
+</div>
+
+<p>Scale lớn khiến tất cả các giá trị bình thường còn lại bị ép chặt về 0 hoặc các số nguyên lân cận cực nhỏ, gây ra lỗi làm tròn nghiêm trọng (Quantization Noise). </p>
+<p>Để giải quyết, các thuật toán tiên tiến như <strong>AWQ (Activation-aware Weight Quantization)</strong> hoặc <strong>SmoothQuant</strong> sẽ áp dụng một phép biến đổi toán học trước khi lượng tử: nhân các kích hoạt với một ma trận tỉ lệ $s$, đồng thời chia các trọng số tương ứng cho $s$ để triệt tiêu Outliers:</p>
+
+<div class="math-block">
+  W' = W \cdot \text{diag}(s)^{-1}, \quad X' = X \cdot \text{diag}(s)
+</div>
+
+<p>Hành động này phân phối lại gánh nặng dải động từ activations sang weights, giúp mô hình Int8/Int4 đạt hiệu năng tiệm cận Float32 gốc.</p>
+
+<h2>4. Thuật toán Hiệu chỉnh sai số hệ thống (Bias Correction)</h2>
+<p>Khi lượng tử hóa các trọng số, sai số làm tròn không phải lúc nào cũng có kỳ vọng bằng 0. Nó thường giới thiệu một độ lệch hệ thống (Systematic Bias Shift) đối với phân phối kích hoạt đầu ra. Lớp đầu ra lượng tử hóa bị lệch trung bình:</p>
+
+<div class="math-block">
+  \mathbb{E}[Y_{quant}] = \mathbb{E}[Y_{float}] + \epsilon
+</div>
+
+<p>Để triệt tiêu sai số trung bình $\epsilon$, thuật toán <strong>Bias Correction</strong> sẽ tính toán độ lệch này trên tập hiệu chuẩn dữ liệu mẫu (Representative Dataset) và trực tiếp điều chỉnh giá trị Bias quantized $\tilde{b}$ trong cấu trúc lớp:</p>
+
+<div class="math-block">
+  \tilde{b} = b - S_{act} \cdot S_{w} \cdot \sum (W_{float} - W_{quant})
+</div>
+
+<p>Phép bù toán học này diễn ra hoàn toàn offline trong quá trình tối ưu hóa mô hình ở Python. Khi đưa xuống thiết bị di động, phần cứng chỉ việc chạy JNI tốc độ cao mà không phải chịu thêm bất kỳ chi phí tính toán phát sinh nào, trong khi Accuracy được khôi phục đáng kinh ngạc.</p>
+
+<div class="callout callout-important">
+  <i data-lucide="calculator" class="callout-icon"></i>
+  <div class="callout-content">
+    <span class="callout-title">Công thức cốt lõi của ML Scientist:</span>
+    <p>Post-Training Quantization không chỉ đơn giản là ép kiểu. Đó là quá trình tối ưu hóa toán học có điều kiện nhằm bảo toàn Entropy thông tin ($D_{KL}$) trên không gian biểu diễn đa chiều.</p>
+  </div>
+</div>

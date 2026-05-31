@@ -1,0 +1,136 @@
+<p>Trong kỷ nguyên bảo mật dữ liệu số, việc tải dữ liệu thô nhạy cảm của người dùng (như hình ảnh khuôn mặt, lịch sử trò chuyện, hoặc giọng nói) lên máy chủ Cloud để Fine-tune mô hình là một rủi ro pháp lý lớn và tốn kém tài nguyên máy chủ.</p>
+
+<p>Xu hướng tương lai của AI thực tế là <strong>On-Device Personalization (Cá nhân hóa ngay trên thiết bị)</strong> kết hợp với <strong>Federated Learning (Học liên hợp)</strong>. Ở đó, mô hình sẽ tự học hỏi, cập nhật trọng số trực tiếp từ hành vi của người dùng ngay trên điện thoại di động một cách hoàn toàn riêng tư.</p>
+
+<h2>1. Cơ chế Hoạt động của Trình huấn luyện Trên thiết bị (On-Device Training)</h2>
+<p>Để thực hiện lan truyền ngược (Backpropagation) và cập nhật trọng số, LiteRT không sử dụng một framework huấn luyện cồng kềnh. Thay vào đó, nó tận dụng chính bộ Interpreter cực nhẹ bằng cách biên dịch cả hai chiều tính toán vào trong cùng một file FlatBuffer <code>.tflite</code>:</p>
+
+<pre><code class="language-text">FlatBuffer Model (.tflite) 
+  ├── Subgraph 1: "infer" (Standard Forward Pass - Nhận diện)
+  ├── Subgraph 2: "train" (Forward + Loss + Backprop Gradients + Weight Update Optimizer)
+  └── Subgraph 3: "save"/"restore" (Ghi/Đọc trọng số mới cập nhật ra file lưu trữ thô)
+</code></pre>
+
+<p>Khi ứng dụng chạy nền lúc điện thoại đang cắm sạc qua đêm, nó sẽ gọi hàm <code>train</code> liên tục trên dữ liệu mới thu thập cục bộ để cập nhật ma trận trọng số trong RAM, sau đó gọi <code>save</code> để đóng băng các thay đổi vào bộ nhớ flash của máy.</p>
+
+<h2>2. Quy trình thiết lập và xuất mô hình có khả năng tự huấn luyện bằng Python</h2>
+<p>Chúng ta sử dụng thư viện TensorFlow để thiết lập một mô hình có đầy đủ các chữ ký (Signatures) hỗ trợ cả lan truyền xuôi và lan truyền ngược, kèm bộ tối ưu hóa <strong>SGD (Stochastic Gradient Descent)</strong>:</p>
+
+<pre><code class="language-python">import tensorflow as tf
+
+class TrainableModel(tf.Module):
+    def __init__(self):
+        super().__init__()
+        # Khởi tạo trọng số có thể cập nhật (Trainable Variables)
+        self.W = tf.Variable(tf.random.uniform([10, 1], -1.0, 1.0), name="weights")
+        self.b = tf.Variable(tf.zeros([1]), name="bias")
+        
+    @tf.function(input_signature=[tf.TensorSpec([None, 10], tf.float32)])
+    def infer(self, x):
+        # Chiều dự đoán thuận
+        return tf.matmul(x, self.W) + self.b
+
+    @tf.function(input_signature=[
+        tf.TensorSpec([None, 10], tf.float32), # X train
+        tf.TensorSpec([None, 1], tf.float32),  # Y label
+        tf.TensorSpec([], tf.float32)          # Learning Rate (LR)
+    ])
+    def train(self, x, y, lr):
+        # Chiều huấn luyện ngược (Backpropagation)
+        with tf.GradientTape() as tape:
+            prediction = tf.matmul(x, self.W) + self.b
+            loss = tf.reduce_mean(tf.square(prediction - y)) # MSE Loss
+            
+        # 1. Tính toán Gradients đạo hàm
+        dW, db = tape.gradient(loss, [self.W, self.b])
+        
+        # 2. Cập nhật trọng số theo giải thuật SGD
+        self.W.assign_sub(lr * dW)
+        self.b.assign_sub(lr * db)
+        return loss
+
+    @tf.function(input_signature=[tf.TensorSpec([100], tf.string)])
+    def save(self, filepath):
+        # Ghi các trọng số hiện tại ra file nhị phân checkpoint
+        return tf.raw_ops.Save(filename=filepath, tensor_names=["W", "b"], tensors=[self.W, self.b])
+
+# Khởi dựng bộ converter đặc biệt chứa signatures huấn luyện
+model = TrainableModel()
+converter = tf.lite.TFLiteConverter.from_concrete_functions([
+    model.infer.get_concrete_function(),
+    model.train.get_concrete_function()
+])
+
+# Thiết lập cờ lưu trữ chữ ký
+converter.target_spec.supported_ops = [
+    tf.lite.OpsSet.TFLITE_BUILTINS,
+    tf.lite.OpsSet.SELECT_TF_OPS # Cần thiết cho các toán tử gradients toán học
+]
+tflite_train_model = converter.convert()
+
+with open('trainable_model.tflite', 'wb') as f:
+    f.write(tflite_train_model)
+print("Xuất mô hình có khả năng tự huấn luyện cục bộ thành công!")
+</code></pre>
+
+<h2>3. Thực thi Vòng lặp Huấn luyện Cập nhật Trọng số trong Kotlin</h2>
+<p>Sau khi đóng gói mô hình <code>trainable_model.tflite</code> vào thư mục assets của Android, ML Engineer sẽ gọi chữ ký <code>train</code> chạy ngầm (Background Task) thông qua thư viện hỗ trợ training cấp cao:</p>
+
+<pre><code class="language-kotlin">import org.tensorflow.lite.Interpreter
+import java.io.File
+import java.nio.ByteBuffer
+
+class OnDeviceTrainer(private val modelFile: File) {
+
+    private var interpreter: Interpreter? = null
+
+    init {
+        val options = Interpreter.Options().apply {
+            // Cho phép thực thi các toán tử Flex (Select TF Ops)
+            setUseNNAPI(false) // NNAPI không hỗ trợ các toán tử cập nhật gradient ngược
+        }
+        interpreter = Interpreter(modelFile, options)
+    }
+
+    /**
+     * Chạy một bước Gradient Descent (Step Epoch)
+     * @param xTrain Bộ đặc trưng đầu vào (Batch size x 10)
+     * @param yLabel Nhãn thực tế mong muốn (Batch size x 1)
+     * @param learningRate Tốc độ học (e.g., 0.01f)
+     * @return Giá trị sai số MSE Loss hiện tại
+     */
+    fun trainStep(xTrain: Array<FloatArray>, yLabel: Array<FloatArray>, learningRate: Float): Float {
+        // Cấu hình vùng nhớ đệm đầu vào cho chữ ký "train"
+        val inputs = mapOf(
+            "x" to xTrain,
+            "y" to yLabel,
+            "lr" to learningRate
+        )
+
+        // Vùng nhớ nhận kết quả MSE loss trả về
+        val outputs = mapOf(
+            "loss" to FloatArray(1)
+        )
+
+        // Thực thi bước lan truyền ngược cập nhật biến trọng số trực tiếp trong RAM
+        interpreter?.runSignature(inputs, outputs, "train")
+
+        return (outputs["loss"] as FloatArray)[0]
+    }
+}
+</code></pre>
+
+<h2>4. Bảo mật dữ liệu trong Federated Learning & Differential Privacy</h2>
+<p>Sau khi mô hình trên hàng triệu điện thoại người dùng đã học và tối ưu cục bộ, làm thế nào để kết hợp những tri thức này lại mà không làm rò rỉ dữ liệu cá nhân?</p>
+<ol>
+  <li><strong>Học liên hợp (Federated Learning):</strong> Các điện thoại di động chỉ gửi các <strong>Gradients thay đổi trọng số (Delta Weight Updates)</strong> về máy chủ trung tâm. Máy chủ sẽ sử dụng thuật toán <strong>Federated Averaging (FedAvg)</strong> để cộng trung bình các delta này lại để cập nhật mô hình gốc toàn cầu (Global Model), sau đó phân phối ngược lại bản cập nhật mới cho người dùng.</li>
+  <li><strong>Bảo mật vi phân (Differential Privacy - DP):</strong> Trước khi gửi delta trọng số lên server, thiết bị sẽ thực hiện phép **Clipping** (giới hạn biên độ thay đổi) và tự động cộng thêm một lượng nhiễu Gauss (Gaussian Noise) siêu nhỏ. Việc này đảm bảo máy chủ trung tâm có thể học được tri thức chung của số đông nhưng về mặt toán học, hoàn toàn không thể tái dựng ngược lại dữ liệu của bất kỳ cá nhân cụ thể nào.</li>
+</ol>
+
+<div class="callout callout-important">
+  <i data-lucide="shield-check" class="callout-icon"></i>
+  <div class="callout-content">
+    <span class="callout-title">Tôn chỉ của Kỹ sư Edge AI:</span>
+    <p>Dữ liệu người dùng phải ở lại cục bộ thiết bị 100%. Mọi quá trình học tập, cá nhân hóa và tinh chỉnh phải được giải quyết triệt để tại biên (at the edge), bảo vệ tuyệt đối quyền riêng tư khách hàng.</p>
+  </div>
+</div>

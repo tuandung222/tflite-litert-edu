@@ -1,0 +1,92 @@
+<p>Trong nghiên cứu, chúng ta thường đo đạc hiệu năng mô hình bằng <strong>FLOPs (Số phép tính dấu phẩy động)</strong> hoặc số lượng tham số. Tuy nhiên, trên thiết bị cạnh (Edge Device) thực tế, thước đo này hoàn toàn bị bẻ gãy. Một mô hình có FLOPs cực thấp vẫn có thể chạy siêu chậm trên điện thoại di động vì nghẽn cổ chai truyền dữ liệu.</p>
+
+<p>Để tối ưu hóa hiệu năng sản phẩm thực tế, một Research Scientist cần phải hiểu sâu về cơ chế <strong>Graph Partitioning (Phân mảnh đồ thị)</strong> và triệt tiêu triệt để hiện tượng <strong>Delegate Fallback (Rớt tăng tốc về CPU)</strong>.</p>
+
+<h2>1. Cơ chế Truyền dữ liệu CPU-GPU (Host-to-Device Copy)</h2>
+<p>Thiết bị di động có kiến trúc SoC (System on Chip) chia sẻ RAM vật lý, nhưng bộ nhớ đồ họa (VRAM) của GPU và bộ nhớ làm việc của CPU vẫn được quản lý ở các phân vùng ảo khác nhau. </p>
+<ul>
+  <li>Khi bạn chạy mô hình trên CPU, dữ liệu đầu vào được nạp trực tiếp vào RAM.</li>
+  <li>Khi kích hoạt <strong>GPU/NPU Delegate</strong>, LiteRT bắt buộc phải thực hiện lệnh sao chép dữ liệu thô (Byte Copy) từ phân vùng CPU (Host) sang phân vùng tăng tốc (Device). Quá trình này được gọi là <strong>Host-to-Device Memory Transfer</strong>.</li>
+</ul>
+<p>Sao chép vùng nhớ qua lại tốn rất nhiều thời gian. Nếu thời gian sao chép dữ liệu lớn hơn thời gian tăng tốc nhân ma trận của GPU, thì việc dùng GPU hoàn toàn phản tác dụng!</p>
+
+<h2>2. Graph Partitioning: Thảm họa Phân mảnh đồ thị và Hiện tượng "Ping-Pong"</h2>
+<p>Một bộ tăng tốc (ví dụ: GPU Delegate) không hỗ trợ 100% tất cả các toán tử của LiteRT. Khi bạn nạp một mô hình vào Interpreter kèm bộ GPU Delegate, trình biên dịch đồ thị (Graph Compiler) của Delegate sẽ duyệt qua toàn bộ mô hình và thực hiện phân vùng:</p>
+
+<div class="math-block">
+  \text{Model Graph} \longrightarrow \text{Partitioning} \longrightarrow \{\text{GPU Subgraph 1}, \text{CPU Fallback Op}, \text{GPU Subgraph 2}\}
+</div>
+
+<p>Hãy tưởng tượng luồng dữ liệu chạy trong mô hình bị phân mảnh:</p>
+<ol>
+  <li>Dữ liệu ảnh từ CPU được sao chép vào GPU VRAM.</li>
+  <li>GPU Delegate xử lý cực nhanh các lớp tích chập ban đầu (<strong>GPU Subgraph 1</strong>).</li>
+  <li>Đến lớp số 8, mô hình sử dụng một toán tử lạ (ví dụ: một toán tử Custom Op hoặc toán tử LayerNormalization chưa được GPU hỗ trợ).</li>
+  <li><strong>RƠM RỚP (CPU Fallback):</strong> LiteRT bắt buộc phải dừng thực thi trên GPU, kết xuất dữ liệu kết quả trung gian từ GPU VRAM sao chép ngược lại RAM của CPU (Device-to-Host Copy).</li>
+  <li>CPU nhận dữ liệu thô, thực thi toán tử chậm chạp đó bằng đơn luồng.</li>
+  <li>Sau khi CPU tính xong, dữ liệu lại tiếp tục được sao chép ngược từ CPU RAM vào GPU VRAM (Host-to-Device Copy) để GPU chạy tiếp các lớp còn lại (<strong>GPU Subgraph 2</strong>).</li>
+</ol>
+<p>Hiện tượng nhảy cóc liên tục CPU-GPU-CPU này được gọi là <strong>Ping-Pong Latency Overhead</strong>. Nó làm triệt tiêu hoàn toàn sức mạnh của các nhân phần cứng cao cấp và khiến mô hình giật lag nghiêm trọng.</p>
+
+<h2>3. Giải pháp Khắc phục từ Giai đoạn Thiết kế Kiến trúc</h2>
+<p>Là một Research Scientist thiết kế mô hình cho sản phẩm thực tế, bạn phải triệt tiêu hiện tượng phân mảnh đồ thị ngay từ bước thiết kế mạng:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Đặc điểm mạng</th>
+      <th>Dễ bị Fallback CPU (Tránh dùng)</th>
+      <th>Tối ưu hóa GPU/NPU (Nên dùng)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Hình dạng Tensor (Shape)</strong></td>
+      <td>Dynamic Shapes (Kích thước thay đổi động tùy đầu vào)</td>
+      <td>Static Shapes (Hình dạng cố định cứng như 224x224x3)</td>
+    </tr>
+    <tr>
+      <td><strong>Chuẩn hóa Lớp (Norm)</strong></td>
+      <td>LayerNormalization phức tạp trên mọi trục</td>
+      <td>BatchNorm (Được chập trực tiếp vào Conv lúc xuất mô hình)</td>
+    </tr>
+    <tr>
+      <td><strong>Kích hoạt phi tuyến</strong></td>
+      <td>GELU, Swish tự chế bằng toán tử thô lẻ</td>
+      <td>ReLU, ReLU6, HardSwish (Đã có phần cứng hỗ trợ gốc)</td>
+    </tr>
+    <tr>
+      <td><strong>Phân nhánh đồ thị</strong></td>
+      <td>Phân nhánh cực nhiều luồng song song nhỏ lẻ</td>
+      <td>Mô hình tuyến tính thẳng hoặc phân nhánh Residual lớn</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>4. Cách chạy Profiling xác định phân mảnh đồ thị</h2>
+<p>Để tìm chính xác lớp nào đang gây ra lỗi rớt tăng tốc CPU, chúng ta có thể sử dụng bộ công cụ <strong>LiteRT Model Benchmark Tool</strong> tích hợp sẵn cờ profiling:</p>
+
+<pre><code class="language-bash"># Chạy benchmark mô hình giả lập trên GPU và in báo cáo profiling chi tiết
+./benchmark_model \
+  --graph=mobilenet_v2.tflite \
+  --enable_op_profiling=true \
+  --use_gpu=true
+</code></pre>
+
+<p>Báo cáo xuất ra sẽ chỉ rõ phân đoạn thời gian thực thi:</p>
+<pre><code class="language-text">============================== Operator Profiling Results ==============================
+[Node ID]  [Op Name]             [Type]        [Avg Time (ms)]   [Hardware Device]
+Node 0     CONV_2D               Builtin       1.24 ms           GPU (Delegate)
+Node 1     DEPTHWISE_CONV_2D     Builtin       0.85 ms           GPU (Delegate)
+Node 2     CUSTOM_NORMALIZATION  Custom        8.40 ms           CPU (Fallback!)  <-- CỔ CHAI NẰM ĐÂY!
+Node 3     ADD                   Builtin       0.12 ms           GPU (Delegate)
+</code></pre>
+<p>Nhìn vào kết quả profile trên, ta lập tức nhận ra toán tử <code>CUSTOM_NORMALIZATION</code> chiếm tới 8.4ms và chạy trên CPU, buộc toàn bộ đồ thị phải phân mảnh. ML Engineer cần phối hợp với Research Scientist để thay thế hoặc viết lại toán tử Custom đó tối ưu cho GPU để gộp đồ thị chạy hoàn toàn trên chip tăng tốc.</p>
+
+<div class="callout callout-important">
+  <i data-lucide="alert-triangle" class="callout-icon"></i>
+  <div class="callout-content">
+    <span class="callout-title">Quy tắc vàng trong Edge AI Deployment:</span>
+    <p>Giữ đồ thị mô hình liên tục (Contiguous Graph). Chỉ cần 1 toán tử CPU chen giữa 100 toán tử GPU có thể làm chậm mô hình hơn cả việc cho chạy toàn bộ mạng nơ-ron 100% bằng CPU đa luồng!</p>
+  </div>
+</div>
