@@ -1,7 +1,7 @@
-<p>LiteRT cung cấp nhiều chế độ Quantization khác nhau tùy thuộc vào nhu cầu của ứng dụng. Chúng được chia làm 2 nhánh lớn: **Post-Training Quantization (PTQ - Lượng tử hóa sau huấn luyện)** và **Quantization-Aware Training (QAT - Lượng tử hóa trong lúc huấn luyện)**.</p>
+<p>LiteRT cung cấp nhiều chế độ Quantization khác nhau tùy thuộc vào nhu cầu của ứng dụng. Chúng được chia làm 2 nhánh lớn: <strong>Post-Training Quantization (PTQ - Lượng tử hóa sau huấn luyện)</strong> và <strong>Quantization-Aware Training (QAT - Lượng tử hóa trong lúc huấn luyện)</strong>.</p>
 
       <h2>1. Post-Training Quantization (PTQ) - Tiện lợi và Phổ biến</h2>
-      <p>PTQ là phương pháp cực kỳ được ưa chuộng vì nó thực hiện trực tiếp khi convert mô hình, **không yêu cầu phải huấn luyện lại (re-train)** mô hình vốn rất tốn kém tài nguyên. Gồm 3 loại chính:</p>
+      <p>PTQ là phương pháp cực kỳ được ưa chuộng vì nó thực hiện trực tiếp khi convert mô hình, <strong>không yêu cầu phải huấn luyện lại (re-train)</strong> mô hình vốn rất tốn kém tài nguyên. Gồm 3 loại chính:</p>
 
       <h3>A. Dynamic Range Quantization (Lượng tử hóa dải động)</h3>
       <ul>
@@ -13,18 +13,18 @@
       <h3>B. Float16 Quantization (Lượng tử hóa sang Float16)</h3>
       <ul>
         <li><strong>Cơ chế:</strong> Trọng số được ép về dạng số thực 16-bit (Float16) thay vì Int8.</li>
-        <li><strong>Ưu điểm:</strong> Giảm 50% kích thước file (từ 400MB xuống 200MB). Rất hoàn hảo khi bạn định deploy mô hình chạy trên **GPU di động** (vì GPU di động tính toán phép thực 16-bit cực nhanh).</li>
+        <li><strong>Ưu điểm:</strong> Giảm 50% kích thước file (từ 400MB xuống 200MB). Rất hoàn hảo khi bạn định deploy mô hình chạy trên <strong>GPU di động</strong> (vì GPU di động tính toán phép thực 16-bit cực nhanh).</li>
         <li><strong>Độ chính xác:</strong> Giữ nguyên 100% độ chính xác của mô hình Float32 gốc.</li>
       </ul>
 
       <h3>C. Full Integer Quantization (Lượng tử hóa số nguyên toàn phần)</h3>
       <ul>
-        <li><strong>Cơ chế:</strong> Cả trọng số và giá trị kích hoạt đầu vào/đầu ra đều được ép hoàn toàn về Int8. Để làm được điều này, chúng ta cần cung cấp một bộ dữ liệu nhỏ mẫu đại diện (**Representative Dataset** - khoảng 100-500 ảnh/mẫu không cần nhãn) để Converter chạy thử mô hình, đo đạc dải phân phối của các giá trị kích hoạt và xác định tham số lượng tử tối ưu.</li>
-        <li><strong>Ưu điểm:</strong> Tốc độ nhanh nhất, tiết kiệm pin nhất. **Bắt buộc** nếu bạn muốn chạy mô hình trên chip AI **NPU** hoặc **DSP**. Kích thước file giảm 4 lần.</li>
+        <li><strong>Cơ chế:</strong> Cả trọng số và giá trị kích hoạt đầu vào/đầu ra đều được ép hoàn toàn về Int8. Để làm được điều này, chúng ta cần cung cấp một bộ dữ liệu nhỏ mẫu đại diện (<strong>Representative Dataset</strong> - khoảng 100-500 ảnh/mẫu không cần nhãn) để Converter chạy thử mô hình, đo đạc dải phân phối của các giá trị kích hoạt và xác định tham số lượng tử tối ưu.</li>
+        <li><strong>Ưu điểm:</strong> Tốc độ nhanh nhất, tiết kiệm pin nhất. <strong>Bắt buộc</strong> nếu bạn muốn chạy mô hình trên chip AI <strong>NPU</strong> hoặc <strong>DSP</strong>. Kích thước file giảm 4 lần.</li>
       </ul>
 
       <h2>2. Quantization-Aware Training (QAT) - Đỉnh cao của độ chính xác</h2>
-      <p>Với các mô hình siêu nhạy cảm hoặc quá nhỏ (như MobileNet v3, YOLO), việc ép số sau khi train (PTQ) có thể làm giảm mạnh độ chính xác. Lúc này ta dùng **QAT**.</p>
+      <p>Với các mô hình siêu nhạy cảm hoặc quá nhỏ (như MobileNet v3, YOLO), việc ép số sau khi train (PTQ) có thể làm giảm mạnh độ chính xác. Lúc này ta dùng <strong>QAT</strong>.</p>
       <ul>
         <li><strong>Cách hoạt động:</strong> Trong quá trình train bằng Python, chúng ta chèn các toán tử "giả lượng tử hóa" (Fake Quantization) vào đồ thị. Mô hình sẽ học cách thích nghi với sai số làm tròn số nguyên ngay khi đang học.</li>
         <li><strong>Kết quả:</strong> Khi convert sang file <code>.tflite</code> Int8, độ chính xác đạt mức tối đa gần như tương đương với mô hình Float32 gốc. Tuy nhiên, nhược điểm là triển khai phức tạp và cần huấn luyện lại từ đầu.</li>
@@ -34,6 +34,6 @@
         <i data-lucide="help-circle" class="callout-icon"></i>
         <div class="callout-content">
           <span class="callout-title">Lời khuyên thực chiến:</span>
-          <p>Khi bắt đầu tối ưu hóa dự án, hãy luôn thử **Dynamic Range Quantization** trước tiên vì nó cực dễ và nhanh. Nếu mô hình chạy chậm trên Android CPU, hãy thử **Full Integer Quantization** để kích hoạt tăng tốc NPU. Nếu mô hình bị suy giảm độ chính xác nghiêm trọng, lúc đó mới nghĩ đến việc dùng **QAT**.</p>
+          <p>Khi bắt đầu tối ưu hóa dự án, hãy luôn thử <strong>Dynamic Range Quantization</strong> trước tiên vì nó cực dễ và nhanh. Nếu mô hình chạy chậm trên Android CPU, hãy thử <strong>Full Integer Quantization</strong> để kích hoạt tăng tốc NPU. Nếu mô hình bị suy giảm độ chính xác nghiêm trọng, lúc đó mới nghĩ đến việc dùng <strong>QAT</strong>.</p>
         </div>
       </div>

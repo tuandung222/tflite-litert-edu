@@ -1,7 +1,7 @@
 <p>Làm thế nào máy tính có thể biểu diễn một số thực phức tạp như $3.14159$ thành số nguyên 8-bit chạy từ $-128$ đến $127$? Hãy cùng khám phá công thức toán học đằng sau giải thuật này.</p>
       
       <h2>1. Công thức Lượng tử hóa Tuyến tính (Linear Quantization)</h2>
-      <p>LiteRT sử dụng giải thuật lượng tử hóa tuyến tính đối xứng hoặc bất đối xứng, ánh xạ giá trị thực $r$ (real) sang giá trị số nguyên $q$ (quantized) thông qua hai tham số: **Scale ($S$)** và **Zero-point ($Z$)**.</p>
+      <p>LiteRT sử dụng giải thuật lượng tử hóa tuyến tính đối xứng hoặc bất đối xứng, ánh xạ giá trị thực $r$ (real) sang giá trị số nguyên $q$ (quantized) thông qua hai tham số: <strong>Scale ($S$)</strong> và <strong>Zero-point ($Z$)</strong>.</p>
       
       <div class="math-block">
         $$q = 	ext{round}left(rac{r}{S}ight) + Z$$
@@ -10,7 +10,7 @@
       <p>Trong đó:</p>
       <ul>
         <li><strong>$r$ (Real value):</strong> Giá trị số thực Float32 ban đầu.</li>
-        <li><strong>$q$ (Quantized value):</strong> Giá trị số nguyên Int8 kết quả. $q$ bắt buộc phải nằm trong dải giới hạn của kiểu dữ liệu (với Int8 là $[-128, 127]$). Nếu vượt quá, giá trị sẽ bị cắt (**Clip**).</li>
+        <li><strong>$q$ (Quantized value):</strong> Giá trị số nguyên Int8 kết quả. $q$ bắt buộc phải nằm trong dải giới hạn của kiểu dữ liệu (với Int8 là $[-128, 127]$). Nếu vượt quá, giá trị sẽ bị cắt (<strong>Clip</strong>).</li>
         <li><strong>$S$ (Scale - Tỷ lệ):</strong> Một số thực dương Float32 thể hiện khoảng cách giữa các vạch chia số nguyên.</li>
         <li><strong>$Z$ (Zero-point - Điểm không):</strong> Một số nguyên Int8. Nó đại diện cho giá trị số thực $r = 0$ sẽ được ánh xạ chính xác về số nguyên nào trong miền lượng tử. Điều này vô cùng quan trọng vì trong mạng nơ-ron, giá trị $0$ (từ lớp ReLU, hay Padding biên) xuất hiện cực kỳ nhiều.</li>
       </ul>
@@ -33,7 +33,7 @@
 
       <h3>Bước C: Lượng tử hóa một giá trị cụ thể $r = 2.5$</h3>
       <p>$$q = 	ext{round}left(rac{2.5}{0.07843}ight) + 0 = 	ext{round}(31.87) = 32$$</p>
-      <p>Vậy số thực **$2.5$** đã được lưu trữ cực gọn gàng dưới dạng số nguyên **$32$** trong file <code>.tflite</code>.</p>
+      <p>Vậy số thực <strong>$2.5$</strong> đã được lưu trữ cực gọn gàng dưới dạng số nguyên <strong>$32$</strong> trong file <code>.tflite</code>.</p>
 
       <h3>Bước D: Giải lượng tử để tính toán (De-quantize)</h3>
       <p>$$r_{approx} = 0.07843 	imes (32 - 0) = 2.50976$$</p>
@@ -43,6 +43,6 @@
         <i data-lucide="sliders" class="callout-icon"></i>
         <div class="callout-content">
           <span class="callout-title">Thử nghiệm trực quan:</span>
-          <p>Hãy nhìn sang bảng điều khiển bên phải! Tôi đã xây dựng riêng cho bạn một **Bộ giả lập Quantization Simulator**. Bạn có thể kéo slider giá trị thực, thay đổi Scale/Zero-point và xem từng bước tính toán chi tiết hiển thị tức thì.</p>
+          <p>Hãy nhìn sang bảng điều khiển bên phải! Tôi đã xây dựng riêng cho bạn một <strong>Bộ giả lập Quantization Simulator</strong>. Bạn có thể kéo slider giá trị thực, thay đổi Scale/Zero-point và xem từng bước tính toán chi tiết hiển thị tức thì.</p>
         </div>
       </div>

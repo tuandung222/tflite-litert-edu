@@ -1,7 +1,7 @@
-<p>Nếu chỉ chạy bằng CPU thông thường, việc tính toán hàng triệu phép nhân ma trận của mô hình AI sẽ làm quá tải điện thoại. May mắn thay, chip xử lý di động ngày nay rất mạnh mẽ. LiteRT tận dụng điều này thông qua cơ chế **Delegates**.</p>
+<p>Nếu chỉ chạy bằng CPU thông thường, việc tính toán hàng triệu phép nhân ma trận của mô hình AI sẽ làm quá tải điện thoại. May mắn thay, chip xử lý di động ngày nay rất mạnh mẽ. LiteRT tận dụng điều này thông qua cơ chế <strong>Delegates</strong>.</p>
 
       <h2>1. Cơ chế Delegates hoạt động thế nào?</h2>
-      <p>Mặc định, LiteRT Interpreter sẽ chạy mô hình trên CPU di động. Tuy nhiên, nếu bạn bật tính năng **Delegate**, Interpreter sẽ trích xuất một phần hoặc toàn bộ đồ thị tính toán của mô hình AI và bàn giao (delegate) cho một bộ xử lý chuyên dụng khác trên điện thoại để tính toán nhanh hơn.</p>
+      <p>Mặc định, LiteRT Interpreter sẽ chạy mô hình trên CPU di động. Tuy nhiên, nếu bạn bật tính năng <strong>Delegate</strong>, Interpreter sẽ trích xuất một phần hoặc toàn bộ đồ thị tính toán của mô hình AI và bàn giao (delegate) cho một bộ xử lý chuyên dụng khác trên điện thoại để tính toán nhanh hơn.</p>
 
       <div class="math-block">
         Interpreter ➔ Gặp lớp tích chập ➔ [Bật Delegate] ➔ Chuyển sang GPU/NPU tính toán ➔ Trả kết quả về CPU
@@ -24,7 +24,7 @@
       <h3>C. NNAPI / NPU Delegate (Neural Processing Unit)</h3>
       <ul>
         <li><strong>Đặc điểm:</strong> Chip chuyên dụng được thiết kế riêng cho các tác vụ học máy (AI chip). Cực kỳ tiết kiệm pin và siêu nhanh.</li>
-        <li><strong>Công nghệ:</strong> Android cung cấp **Android Neural Networks API (NNAPI)**. LiteRT nói chuyện với NNAPI, NNAPI sẽ tự giao tiếp với chip NPU của các hãng phần cứng (như Tensor chip của Google Pixel, Bionic của Apple, hay APU của MediaTek/Qualcomm).</li>
+        <li><strong>Công nghệ:</strong> Android cung cấp <strong>Android Neural Networks API (NNAPI)</strong>. LiteRT nói chuyện với NNAPI, NNAPI sẽ tự giao tiếp với chip NPU của các hãng phần cứng (như Tensor chip của Google Pixel, Bionic của Apple, hay APU của MediaTek/Qualcomm).</li>
       </ul>
 
       <h3>D. Hexagon DSP Delegate</h3>

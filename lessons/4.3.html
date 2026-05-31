@@ -1,12 +1,12 @@
-<p>Kỷ nguyên Generative AI đang bùng nổ, và giờ đây bạn hoàn toàn có thể chạy các <strong>Small Language Models (SLM)</strong> như **Gemma 2B, Llama 3.2 1B/3B, hay Phi-3** trực tiếp ngay trên chính chiếc điện thoại Android/iOS của mình một cách hoàn toàn offline!</p>
+<p>Kỷ nguyên Generative AI đang bùng nổ, và giờ đây bạn hoàn toàn có thể chạy các <strong>Small Language Models (SLM)</strong> như <strong>Gemma 2B, Llama 3.2 1B/3B, hay Phi-3</strong> trực tiếp ngay trên chính chiếc điện thoại Android/iOS của mình một cách hoàn toàn offline!</p>
 
       <h2>1. MediaPipe LLM Inference API là gì?</h2>
       <p>Để chạy các mô hình GenAI tự hồi quy (Auto-regressive) siêu phức tạp chứa hàng tỷ tham số, việc sử dụng Interpreter thô của TFLite là rất khó khăn. </p>
       
-      <p>Google đã phát triển bộ công cụ **MediaPipe LLM Inference API** chạy đè lên nhân của LiteRT. Nó được thiết kế tối ưu riêng để chạy các mô hình ngôn ngữ lớn thu nhỏ thông qua việc tích hợp sâu cơ chế **KV Caching** (lưu trữ khóa/giá trị lịch sử hội thoại) và **quantization INT4/INT8** tối ưu phần cứng của GPU di động.</p>
+      <p>Google đã phát triển bộ công cụ <strong>MediaPipe LLM Inference API</strong> chạy đè lên nhân của LiteRT. Nó được thiết kế tối ưu riêng để chạy các mô hình ngôn ngữ lớn thu nhỏ thông qua việc tích hợp sâu cơ chế <strong>KV Caching</strong> (lưu trữ khóa/giá trị lịch sử hội thoại) và <strong>quantization INT4/INT8</strong> tối ưu phần cứng của GPU di động.</p>
 
       <h2>2. Chuẩn bị file mô hình SLM lượng tử hóa</h2>
-      <p>Để chạy được offline, mô hình bắt buộc phải được lượng tử hóa sâu về dạng số nguyên 4-bit (INT4) để giảm kích thước (ví dụ: Gemma 2B INT4 có kích thước file <code>.bin</code> khoảng **1.3 GB**, vừa vặn với RAM của điện thoại di động).</p>
+      <p>Để chạy được offline, mô hình bắt buộc phải được lượng tử hóa sâu về dạng số nguyên 4-bit (INT4) để giảm kích thước (ví dụ: Gemma 2B INT4 có kích thước file <code>.bin</code> khoảng <strong>1.3 GB</strong>, vừa vặn với RAM của điện thoại di động).</p>
 
       <h2>3. Code Kotlin tích hợp trọn vẹn mô hình SLM</h2>
       <p>Thêm dependency vào Gradle:</p>

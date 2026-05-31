@@ -126,6 +126,15 @@ document.addEventListener('DOMContentLoaded', () => {
     filterLessons(e.target.value);
   });
 
+  // Setup sidebar toggle for customization resizability
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const sidebar = document.querySelector('.app-sidebar');
+  if (sidebarToggle && sidebar) {
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+    });
+  }
+
   // Setup Quantization Simulator Interactive Controls
   setupQuantizationSimulator();
 
@@ -206,6 +215,115 @@ async function loadLesson(lessonId) {
       <div class="skeleton-line"></div>
     </div>
   `;
+
+  // Render Jupyter Notebook natively as high-quality UI document if selected
+  if (lessonId === '5.1' || lessonId === '5.2') {
+    const notebookFile = lessonId === '5.1'
+      ? 'notebooks/01_model_conversion_and_quantization.ipynb'
+      : 'notebooks/02_model_metadata_and_python_inference.ipynb';
+      
+    try {
+      const response = await fetch(notebookFile);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const text = await response.text();
+      const notebook = JSON.parse(text);
+      
+      let notebookHtml = `
+        <div class="notebook-header-card">
+          <div class="notebook-title-area">
+            <span class="notebook-meta-title">Jupyter Notebook UI Viewer 📓</span>
+            <span class="notebook-meta-desc">Tự động kết xuất và trực quan hóa tệp thực hành học phần (.ipynb)</span>
+          </div>
+          <a href="${notebookFile}" download class="btn btn-primary" style="text-decoration: none;">
+            <i data-lucide="download" class="btn-icon"></i> Tải xuống file (.ipynb)
+          </a>
+        </div>
+        <div class="notebook-container">
+      `;
+      
+      let codeCellCount = 1;
+      
+      notebook.cells.forEach(cell => {
+        const sourceText = cell.source.join('');
+        if (cell.cell_type === 'markdown') {
+          // Simple local Markdown-to-HTML parser for rendering
+          let html = sourceText
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/`(.*?)`/g, '<code class="math-inline">$1</code>')
+            .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+            .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
+            .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
+            .replace(/^- (.*?)$/gm, '<li>$1</li>');
+            
+          notebookHtml += `
+            <div class="notebook-cell markdown-cell">
+              <div class="cell-num"></div>
+              <div class="cell-content">
+                <p>${html}</p>
+              </div>
+            </div>
+          `;
+        } else if (cell.cell_type === 'code') {
+          // Escape HTML characters to prevent breaking DOM layout
+          const escapedCode = sourceText
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+            
+          notebookHtml += `
+            <div class="notebook-cell code-cell">
+              <div class="cell-num">In [${codeCellCount++}]:</div>
+              <div class="cell-content">
+                <pre><code>${escapedCode}</code></pre>
+              </div>
+            </div>
+          `;
+        }
+      });
+      
+      notebookHtml += `</div>`;
+      
+      // Inject completed notebook UI view
+      lessonViewer.innerHTML = `
+        <div class="lesson-meta-info">
+          <span class="badge" style="margin-bottom:1rem;">${lesson.meta.category}</span>
+        </div>
+        <h1>${lesson.title}</h1>
+        <div class="lesson-meta" style="margin-bottom: 1.5rem;">
+          <div class="meta-item">
+            <i data-lucide="clock" class="meta-icon"></i>
+            <span>Thời lượng học: ${lesson.meta.duration}</span>
+          </div>
+          <div class="meta-item">
+            <i data-lucide="bar-chart-2" class="meta-icon"></i>
+            <span>Độ khó: ${lesson.meta.difficulty}</span>
+          </div>
+          <div class="meta-item">
+            <i data-lucide="user" class="meta-icon"></i>
+            <span>Giáo trình: DeepMind Partner</span>
+          </div>
+        </div>
+
+        <div class="lesson-body-text">
+          ${notebookHtml}
+        </div>
+
+        ${navFooterHtml}
+      `;
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      lucide.createIcons();
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise();
+      }
+      return;
+    } catch (err) {
+      console.error('Failed to parse notebook JSON, falling back to html:', err);
+    }
+  }
 
   // Fetch the lesson content asynchronously
   try {

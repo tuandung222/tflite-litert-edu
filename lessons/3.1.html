@@ -24,9 +24,9 @@
 
       <h2>2. Ngăn Gradle nén nén file mô hình .tflite (Cực kỳ quan trọng!)</h2>
       <p>Mặc định, khi build file cài đặt ứng dụng Android (APK), hệ thống build Gradle sẽ tự động nén tất cả các file trong thư mục <code>assets</code> để giảm dung lượng tải. </p>
-      <p>Tuy nhiên, **nếu file .tflite bị nén, hệ điều hành Android sẽ không thể thực hiện cơ chế ánh xạ bộ nhớ trực tiếp (Memory Map - mmap)**. Lúc đó ứng dụng buộc phải giải nén toàn bộ mô hình vào RAM, làm tăng thời gian mở ứng dụng và tốn cực nhiều RAM.</p>
+      <p>Tuy nhiên, <strong>nếu file .tflite bị nén, hệ điều hành Android sẽ không thể thực hiện cơ chế ánh xạ bộ nhớ trực tiếp (Memory Map - mmap)</strong>. Lúc đó ứng dụng buộc phải giải nén toàn bộ mô hình vào RAM, làm tăng thời gian mở ứng dụng và tốn cực nhiều RAM.</p>
       
-      <p>Để ngăn điều này, bạn **bắt buộc** phải thêm cấu hình sau vào trong block <code>android { ... }</code> của file <code>build.gradle.kts</code>:</p>
+      <p>Để ngăn điều này, bạn <strong>bắt buộc</strong> phải thêm cấu hình sau vào trong block <code>android { ... }</code> của file <code>build.gradle.kts</code>:</p>
 
       <div class="code-container">
         <div class="code-header">
