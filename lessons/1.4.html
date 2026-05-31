@@ -1,0 +1,41 @@
+<p>Nếu chỉ chạy bằng CPU thông thường, việc tính toán hàng triệu phép nhân ma trận của mô hình AI sẽ làm quá tải điện thoại. May mắn thay, chip xử lý di động ngày nay rất mạnh mẽ. LiteRT tận dụng điều này thông qua cơ chế **Delegates**.</p>
+
+      <h2>1. Cơ chế Delegates hoạt động thế nào?</h2>
+      <p>Mặc định, LiteRT Interpreter sẽ chạy mô hình trên CPU di động. Tuy nhiên, nếu bạn bật tính năng **Delegate**, Interpreter sẽ trích xuất một phần hoặc toàn bộ đồ thị tính toán của mô hình AI và bàn giao (delegate) cho một bộ xử lý chuyên dụng khác trên điện thoại để tính toán nhanh hơn.</p>
+
+      <div class="math-block">
+        Interpreter ➔ Gặp lớp tích chập ➔ [Bật Delegate] ➔ Chuyển sang GPU/NPU tính toán ➔ Trả kết quả về CPU
+      </div>
+
+      <h2>2. 4 Loại phần cứng tăng tốc chính trên Mobile</h2>
+      
+      <h3>A. CPU (Bộ xử lý trung tâm - Mặc định)</h3>
+      <ul>
+        <li><strong>Đặc điểm:</strong> Mọi điện thoại đều có. Rất linh hoạt, hỗ trợ 100% mọi toán tử AI.</li>
+        <li><strong>Tối ưu hóa:</strong> LiteRT sử dụng đa luồng (Multi-threading) và tập lệnh ARM NEON để tối ưu hóa tính toán song song ở mức phần cứng CPU.</li>
+      </ul>
+
+      <h3>B. GPU Delegate (Bộ xử lý đồ họa)</h3>
+      <ul>
+        <li><strong>Đặc điểm:</strong> Thiết kế cho xử lý đồ họa 3D nên có hàng nghìn lõi tính toán song song cực mạnh. Rất thích hợp cho các mô hình xử lý ảnh/video (CNN).</li>
+        <li><strong>Công nghệ:</strong> Dưới Android, GPU Delegate sử dụng OpenGL ES hoặc Vulkan. Dưới iOS, nó sử dụng Metal.</li>
+      </ul>
+
+      <h3>C. NNAPI / NPU Delegate (Neural Processing Unit)</h3>
+      <ul>
+        <li><strong>Đặc điểm:</strong> Chip chuyên dụng được thiết kế riêng cho các tác vụ học máy (AI chip). Cực kỳ tiết kiệm pin và siêu nhanh.</li>
+        <li><strong>Công nghệ:</strong> Android cung cấp **Android Neural Networks API (NNAPI)**. LiteRT nói chuyện với NNAPI, NNAPI sẽ tự giao tiếp với chip NPU của các hãng phần cứng (như Tensor chip của Google Pixel, Bionic của Apple, hay APU của MediaTek/Qualcomm).</li>
+      </ul>
+
+      <h3>D. Hexagon DSP Delegate</h3>
+      <ul>
+        <li><strong>Đặc điểm:</strong> Bộ xử lý tín hiệu số (DSP) có trên các thiết bị chạy chip Snapdragon của Qualcomm. Rất tối ưu khi chạy các mô hình đã được lượng tử hóa sang số nguyên 8-bit (int8).</li>
+      </ul>
+
+      <div class="callout callout-warning">
+        <i data-lucide="alert-triangle" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Lưu ý quan trọng khi chọn Delegate:</span>
+          <p>Không phải mô hình nào chạy trên GPU cũng nhanh hơn CPU. Nếu mô hình quá nhỏ, thời gian copy dữ liệu từ RAM CPU sang bộ nhớ GPU còn lâu hơn thời gian CPU tự tính toán. Quy tắc chung: <strong>Chỉ dùng GPU/NPU cho các mô hình trung bình - nặng (như Object Detection, Segmentation)</strong>.</p>
+        </div>
+      </div>

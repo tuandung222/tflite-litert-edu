@@ -1,0 +1,67 @@
+<p>Sau khi đã load mô hình thành công và tiền xử lý ảnh xong, giờ là thời khắc quyết định: Nạp dữ liệu vào LiteRT Interpreter và kích hoạt mô hình dự đoán!</p>
+
+      <h2>1. Khởi tạo đối tượng Interpreter với Options tùy chọn</h2>
+      <p>Bạn nên thiết lập số luồng CPU (threads) để tận dụng đa lõi của chip điện thoại và bật cơ chế tăng tốc GPU nếu có:</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>Kotlin (Interpreter Initialization)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code><span class="code-keyword">import</span> org.tensorflow.lite.Interpreter
+<span class="code-keyword">import</span> org.tensorflow.lite.gpu.GpuDelegate
+<span class="code-keyword">import</span> java.io.File
+
+<span class="code-comment">// 1. Cấu hình các tùy chọn cho bộ thông dịch</span>
+<span class="code-keyword">val</span> options = <span class="code-class">Interpreter</span>.<span class="code-class">Options</span>().apply {
+    setNumThreads(4) <span class="code-comment">// Cho phép chạy song song trên 4 nhân CPU</span>
+    
+    <span class="code-comment">// Bật tăng tốc GPU nếu phần cứng thiết bị hỗ trợ</span>
+    <span class="code-keyword">try</span> {
+        <span class="code-keyword">val</span> gpuDelegate = <span class="code-class">GpuDelegate</span>()
+        addDelegate(gpuDelegate)
+    } <span class="code-keyword">catch</span> (e: <span class="code-class">Exception</span>) {
+        <span class="code-comment">// Thiết bị không hỗ trợ GPU, tự động fallback chạy CPU đa luồng</span>
+    }
+}
+
+<span class="code-comment">// 2. Khởi tạo Interpreter từ MappedByteBuffer đã load ở bài 3.2</span>
+<span class="code-keyword">val</span> interpreter = <span class="code-class">Interpreter</span>(modelBuffer, options)</code></pre>
+        </div>
+      </div>
+
+      <h2>2. Thực hiện chạy dự đoán (Inference)</h2>
+      <p>Chuẩn bị mảng đầu ra thích hợp để nhận kết quả từ Interpreter. Giả sử mô hình phân loại hình ảnh của bạn dự đoán 1001 nhãn (như mô hình MobileNet):</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>Kotlin (Running Inference)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code><span class="code-comment">// 1. Lấy dữ liệu ByteBuffer đã được tiền xử lý ở bài 3.3</span>
+<span class="code-keyword">val</span> inputBuffer = preprocessedImage.buffer
+
+<span class="code-comment">// 2. Chuẩn bị mảng để nhận xác suất đầu ra (shape là [1][1001])</span>
+<span class="code-keyword">val</span> outputArray = <span class="code-class">Array</span>(1) { <span class="code-class">FloatArray</span>(1001) }
+
+<span class="code-comment">// 3. Chạy mô hình! Phép toán đồng bộ sẽ khóa luồng cho tới khi hoàn tất</span>
+interpreter.run(inputBuffer, outputArray)
+
+<span class="code-comment">// 4. Đọc kết quả xác suất nhãn đầu tiên</span>
+<span class="code-keyword">val</span> probabilities = outputArray[0]
+<span class="code-keyword">val</span> maxProbIndex = probabilities.indices.maxByOrNull { probabilities[it] } ?: -1
+<span class="code-keyword">val</span> maxConfidence = probabilities[maxProbIndex]
+
+print(<span class="code-string">"Nhãn dự đoán có chỉ số: $maxProbIndex với độ tự tin: ${maxConfidence * 100}%"</span>)</code></pre>
+        </div>
+      </div>
+
+      <div class="callout callout-warning">
+        <i data-lucide="alert-triangle" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Tuyệt đối không chạy trên Luồng Giao Diện (UI Thread):</span>
+          <p>Mặc dù chạy trên điện thoại rất nhanh (chỉ từ 10 - 45ms), phép toán <code>interpreter.run()</code> vẫn sẽ gây đơ nhẹ giao diện (ANR - Application Not Responding) nếu bạn chạy trực tiếp trên luồng chính (Main Thread). <strong>Hãy luôn bao bọc mã lệnh chạy inference trong một Coroutine (Kotlin Coroutines) trên luồng nền Dispatchers.Default</strong>.</p>
+        </div>
+      </div>

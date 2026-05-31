@@ -1,0 +1,92 @@
+<p><strong>Embedding Model (Mô hình nhúng đặc trưng)</strong> là nền tảng cốt lõi của các ứng dụng tìm kiếm ngữ nghĩa thời thượng (Semantic Search) và RAG (Retrieval-Augmented Generation). </p>
+      
+      <p>Thay vì phân loại ảnh hay text thành một lớp cụ thể, Embedding model ánh xạ dữ liệu đầu vào thành một <strong>Vector toán học có số chiều cố định (e.g., 256, 384 hoặc 768 chiều)</strong> mang ý nghĩa ngữ nghĩa. Các dữ liệu có ý nghĩa giống nhau sẽ nằm gần nhau trong không gian Vector này.</p>
+
+      <h2>1. Tại sao cần chạy Embedding Model trực tiếp trên Mobile?</h2>
+      <div class="callout callout-important">
+        <i data-lucide="shield" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Ứng dụng thực tiễn của On-Device Embedding:</span>
+          <ul>
+            <li><strong>Tìm kiếm ảnh thông minh offline:</strong> Tự quét toàn bộ ảnh trên điện thoại của người dùng, biến mỗi bức ảnh thành một vector biểu diễn, và cho phép tìm kiếm nhanh bằng từ khóa (ví dụ: gõ chữ "con chó" sẽ quét vector và hiển thị các ảnh con chó) mà không cần gửi ảnh lên server.</li>
+            <li><strong>Semantic Search trong ghi chú:</strong> Tìm kiếm ngữ nghĩa trong ứng dụng ghi chú cá nhân hoàn toàn bảo mật.</li>
+            <li><strong>Local RAG:</strong> Cung cấp ngữ cảnh từ danh bạ, tin nhắn, nhật ký người dùng cho mô hình SLM (LLM thu nhỏ) trả lời mà không lo lộ thông tin.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>2. Giải thuật so sánh ngữ nghĩa Vector: Cosine Similarity</h2>
+      <p>Để đo độ tương đồng ngữ nghĩa giữa hai thực thể $A$ và $B$ sau khi có vector biểu diễn, chúng ta sử dụng công thức **Cosine Similarity (Độ tương đồng Cosin)**:</p>
+      
+      <div class="math-block">
+        $$	ext{Cosine Similarity}(A, B) = rac{A cdot B}{|A| 	imes |B|} = rac{sum_{i=1}^{N} A_i B_i}{sqrt{sum_{i=1}^{N} A_i^2} 	imes sqrt{sum_{i=1}^{N} B_i^2}}$$
+      </div>
+      <p>Giá trị Cosine Similarity chạy từ <code>-1.0</code> đến <code>1.0</code>. Giá trị càng gần <code>1.0</code> chứng tỏ hai thực thể có nội dung ngữ nghĩa càng giống hệt nhau.</p>
+
+      <h2>3. Code Kotlin trích xuất Embedding và Tính toán Cosine Similarity</h2>
+      <p>Dưới đây là class mẫu Kotlin chạy mô hình nhúng đặc trưng (đầu ra là vector 384 chiều) và hàm tính độ tương đồng cục bộ siêu tốc:</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>Kotlin (EmbeddingService.kt)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code><span class="code-keyword">import</span> android.content.Context
+<span class="code-keyword">import</span> org.tensorflow.lite.Interpreter
+<span class="code-keyword">import</span> java.nio.FloatBuffer
+<span class="code-keyword">import</span> java.nio.MappedByteBuffer
+<span class="code-keyword">import</span> kotlin.math.sqrt
+
+<span class="code-keyword">class</span> <span class="code-class">LocalEmbeddingEngine</span>(context: <span class="code-class">Context</span>) {
+
+    <span class="code-keyword">private var</span> interpreter: <span class="code-class">Interpreter</span>? = <span class="code-keyword">null</span>
+    <span class="code-keyword">private val</span> embeddingDim = 384 <span class="code-comment">// Số chiều vector đầu ra của mô hình (ví dụ MobileBERT embedding)</span>
+
+    <span class="code-keyword">init</span> {
+        <span class="code-keyword">val</span> modelBuffer: <span class="code-class">MappedByteBuffer</span> = <span class="code-class">ModelLoader</span>.loadModelFile(context, <span class="code-string">"text_embedding_model.tflite"</span>)
+        <span class="code-keyword">val</span> options = <span class="code-class">Interpreter</span>.<span class="code-class">Options</span>().apply { setNumThreads(4) }
+        interpreter = <span class="code-class">Interpreter</span>(modelBuffer, options)
+    }
+
+    <span class="code-comment">/**
+     * Nhận mảng token của văn bản (đã qua tiền xử lý Tokenization) 
+     * và trả về Vector biểu diễn 384 chiều
+     */</span>
+    <span class="code-keyword">fun</span> <span class="code-function">getEmbedding</span>(inputIds: <span class="code-class">IntArray</span>): <span class="code-class">FloatArray</span> {
+        <span class="code-keyword">val</span> inst = interpreter ?: <span class="code-keyword">return</span> <span class="code-class">FloatArray</span>(embeddingDim)
+
+        <span class="code-comment">// Tạo đầu vào shape: [1, max_sequence_length]</span>
+        <span class="code-keyword">val</span> inputVal = <span class="code-class">Array</span>(1) { inputIds }
+        
+        <span class="code-comment">// Tạo đầu ra để nhận vector [1, 384]</span>
+        <span class="code-keyword">val</span> outputMap = HashMap&lt;<span class="code-class">Int</span>, Any&gt;()
+        <span class="code-keyword">val</span> outputArray = <span class="code-class">Array</span>(1) { <span class="code-class">FloatArray</span>(embeddingDim) }
+        outputMap[0] = outputArray
+
+        <span class="code-comment">// Thực thi inference</span>
+        inst.runForMultipleInputsOutputs(arrayOf(inputVal), outputMap)
+
+        <span class="code-keyword">return</span> outputArray[0]
+    }
+
+    <span class="code-comment">/**
+     * Thuật toán tính độ tương đồng Cosin cục bộ giữa 2 Vector
+     */</span>
+    <span class="code-keyword">fun</span> <span class="code-function">cosineSimilarity</span>(vectorA: <span class="code-class">FloatArray</span>, vectorB: <span class="code-class">FloatArray</span>): <span class="code-class">Float</span> {
+        <span class="code-keyword">var</span> dotProduct = 0.0f
+        <span class="code-keyword">var</span> normA = 0.0f
+        <span class="code-keyword">var</span> normB = 0.0f
+        
+        <span class="code-keyword">for</span> (i <span class="code-keyword">in</span> vectorA.indices) {
+            dotProduct += vectorA[i] * vectorB[i]
+            normA += vectorA[i] * vectorA[i]
+            normB += vectorB[i] * vectorB[i]
+        }
+        
+        <span class="code-keyword">val</span> denominator = sqrt(normA) * sqrt(normB)
+        <span class="code-keyword">return if</span> (denominator == 0.0f) 0.0f <span class="code-keyword">else</span> (dotProduct / denominator)
+    }
+}</code></pre>
+        </div>
+      </div>

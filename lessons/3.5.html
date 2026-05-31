@@ -1,0 +1,90 @@
+<p>Sau khi chạy mô hình dự đoán (ví dụ như mô hình nhận diện vật thể Object Detection), kết quả trả về chỉ là những con số nhị phân thô ngu ngốc. Bài học này sẽ hướng dẫn bạn cách chuyển hóa chúng thành khung viền bao quanh vật thể (bounding box) vẽ trực tiếp đè lên màn hình camera.</p>
+
+      <h2>1. Hiểu định dạng đầu ra của mô hình Nhận diện vật thể (Object Detection)</h2>
+      <p>Các mô hình nhận diện vật thể tiêu chuẩn (như SSD MobileNet) thường trả về 4 mảng đầu ra song song sau khi inference:</p>
+      <ul>
+        <li><strong>Bounding Boxes (Khung giới hạn):</strong> Trả về mảng 3 chiều kích thước <code>[1][100][4]</code> chứa tọa độ dạng tỉ lệ <code>[ymin, xmin, ymax, xmax]</code> (giá trị chạy từ <code>0.0</code> đến <code>1.0</code>).</li>
+        <li><strong>Class IDs (Chỉ số lớp):</strong> Mảng chứa chỉ số của vật thể (ví dụ: 0 = "con người", 1 = "xe đạp").</li>
+        <li><strong>Scores (Điểm tự tin):</strong> Mảng chứa xác suất tự tin của dự đoán (từ <code>0.0</code> đến <code>1.0</code>).</li>
+        <li><strong>Number of Detections (Số lượng phát hiện):</strong> Một số thực duy nhất cho biết có bao nhiêu vật thể được phát hiện trong khung hình (ví dụ: tối đa 10 vật thể).</li>
+      </ul>
+
+      <h2>2. Xử lý tọa độ tỷ lệ về tọa độ Pixel thực tế trên màn hình</h2>
+      <p>Vì tọa độ mô hình trả về là tỉ lệ phần trăm ảo (từ 0 đến 1), bạn phải nhân nó với kích thước chiều cao và chiều rộng thực tế của View hiển thị camera trên điện thoại:</p>
+      <div class="math-block">
+        $$X_{pixel} = x 	imes Width_{view}$$
+        $$Y_{pixel} = y 	imes Height_{view}$$
+      </div>
+
+      <h2>3. Vẽ đè kết quả lên Custom View bằng Canvas</h2>
+      <p>Tạo một lớp Custom View kế thừa từ <code>View</code> trong Android để vẽ đè các bounding box lên trên khung xem trước camera:</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>Kotlin (OverlayView.kt)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code><span class="code-keyword">import</span> android.content.Context
+<span class="code-keyword">import</span> android.graphics.Canvas
+<span class="code-keyword">import</span> android.graphics.Color
+<span class="code-keyword">import</span> android.graphics.Paint
+<span class="code-keyword">import</span> android.graphics.RectF
+<span class="code-keyword">import</span> android.util.AttributeSet
+<span class="code-keyword">import</span> android.view.View
+
+<span class="code-keyword">class</span> <span class="code-class">OverlayView</span>(context: <span class="code-class">Context</span>, attrs: <span class="code-class">AttributeSet</span>?) : <span class="code-class">View</span>(context, attrs) {
+
+    <span class="code-comment">// 1. Thiết lập cọ vẽ viền khung phát hiện</span>
+    <span class="code-keyword">private val</span> boxPaint = <span class="code-class">Paint</span>().apply {
+        color = <span class="code-class">Color</span>.GREEN
+        style = <span class="code-class">Paint</span>.<span class="code-class">Style</span>.STROKE
+        strokeWidth = 6.0f
+    }
+
+    <span class="code-comment">// 2. Thiết lập cọ vẽ chữ nhãn vật thể</span>
+    <span class="code-keyword">private val</span> textPaint = <span class="code-class">Paint</span>().apply {
+        color = <span class="code-class">Color</span>.WHITE
+        textSize = 40.0f
+        style = <span class="code-class">Paint</span>.<span class="code-class">Style</span>.FILL
+    }
+
+    <span class="code-comment">// Mảng chứa danh sách các vật thể cần vẽ đè lên camera</span>
+    <span class="code-keyword">private var</span> results: <span class="code-class">List</span>&lt;<span class="code-class">DetectionResult</span>&gt; = emptyList()
+
+    <span class="code-keyword">fun</span> <span class="code-function">setResults</span>(newResults: <span class="code-class">List</span>&lt;<span class="code-class">DetectionResult</span>&gt;) {
+        results = newResults
+        invalidate() <span class="code-comment">// Kích hoạt hệ thống yêu cầu vẽ lại màn hình (gọi onDraw)</span>
+    }
+
+    <span class="code-keyword">override fun</span> <span class="code-function">onDraw</span>(canvas: <span class="code-class">Canvas</span>) {
+        <span class="code-keyword">super</span>.onDraw(canvas)
+        
+        <span class="code-comment">// 3. Lặp qua tất cả kết quả phát hiện và vẽ lên Canvas</span>
+        <span class="code-keyword">for</span> (result <span class="code-keyword">in</span> results) {
+            <span class="code-comment">// Chuyển đổi tỉ lệ bounding box thành pixel thực tế khớp màn hình</span>
+            <span class="code-keyword">val</span> rect = <span class="code-class">RectF</span>(
+                result.xmin * width,
+                result.ymin * height,
+                result.xmax * width,
+                result.ymax * height
+            )
+            
+            <span class="code-comment">// Vẽ hình hộp bao quanh vật thể</span>
+            canvas.drawRect(rect, boxPaint)
+            
+            <span class="code-comment">// Vẽ văn bản nhãn hiệu vật thể và điểm số tự tin</span>
+            <span class="code-keyword">val</span> displayText = <span class="code-string">"${result.label} (${String.format("%.1f", result.score * 100)}%)"</span>
+            canvas.drawText(displayText, rect.left, rect.top - 10f, textPaint)
+        }
+    }
+}
+
+<span class="code-comment">// Khai báo lớp thực thể chứa dữ liệu phát hiện</span>
+<span class="code-keyword">data class</span> <span class="code-class">DetectionResult</span>(
+    <span class="code-keyword">val</span> ymin: <span class="code-class">Float</span>, <span class="code-keyword">val</span> xmin: <span class="code-class">Float</span>, <span class="code-keyword">val</span> ymax: <span class="code-class">Float</span>, <span class="code-keyword">val</span> xmax: <span class="code-class">Float</span>,
+    <span class="code-keyword">val</span> label: <span class="code-class">String</span>,
+    <span class="code-keyword">val</span> score: <span class="code-class">Float</span>
+)</code></pre>
+        </div>
+      </div>

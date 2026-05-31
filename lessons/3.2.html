@@ -1,0 +1,63 @@
+<p>Tại sao các nhà phát triển chuyên nghiệp không bao giờ đọc trực tiếp file mô hình từ luồng đầu vào thông thường? Hãy tìm hiểu cách load mô hình đạt chuẩn Zero-Copy bằng <code>MappedByteBuffer</code>.</p>
+
+      <h2>1. MappedByteBuffer là gì?</h2>
+      <p><code>MappedByteBuffer</code> là một tính năng cao cấp của Java/Kotlin NIO (New I/O). Nó ánh xạ trực tiếp vùng nhớ vật lý chứa file <code>.tflite</code> trên bộ nhớ flash của điện thoại vào không gian địa chỉ ảo của ứng dụng.</p>
+      <ul>
+        <li><strong>Zero-Copy:</strong> LiteRT Interpreter có thể đọc trực tiếp các tham số của mô hình từ vùng nhớ ánh xạ này mà không cần copy dữ liệu sang RAM trung gian.</li>
+        <li><strong>Giải phóng bộ nhớ lập tức:</strong> Khi hệ điều hành thiếu RAM, nó có thể tự động thu hồi vùng nhớ này mà không gây crash ứng dụng.</li>
+      </ul>
+
+      <h2>2. Hàm mẫu load file .tflite chuẩn trong Kotlin</h2>
+      <p>Hãy tạo một class helper (ví dụ: <code>ModelLoader.kt</code>) và chép đoạn code tối ưu sau:</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>Kotlin (ModelLoader.kt)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code><span class="code-keyword">import</span> android.content.Context
+<span class="code-keyword">import</span> android.content.res.AssetFileDescriptor
+<span class="code-keyword">import</span> java.io.FileInputStream
+<span class="code-keyword">import</span> java.io.IOException
+<span class="code-keyword">import</span> java.nio.MappedByteBuffer
+<span class="code-keyword">import</span> java.nio.channels.FileChannel
+
+<span class="code-keyword">object</span> <span class="code-class">ModelLoader</span> {
+
+    @Throws(IOException::<span class="code-class">Class</span>)
+    <span class="code-keyword">fun</span> <span class="code-function">loadModelFile</span>(context: <span class="code-class">Context</span>, modelName: <span class="code-class">String</span>): <span class="code-class">MappedByteBuffer</span> {
+        <span class="code-comment">// 1. Mở mô tả tệp từ thư mục assets</span>
+        <span class="code-keyword">val</span> fileDescriptor: <span class="code-class">AssetFileDescriptor</span> = context.assets.openFd(modelName)
+        
+        <span class="code-comment">// 2. Tạo một luồng đọc tệp nhị phân</span>
+        <span class="code-keyword">val</span> inputStream = <span class="code-class">FileInputStream</span>(fileDescriptor.fileDescriptor)
+        <span class="code-keyword">val</span> fileChannel: <span class="code-class">FileChannel</span> = inputStream.channel
+        
+        <span class="code-comment">// 3. Xác định vị trí bắt đầu và độ dài của tệp mô hình</span>
+        <span class="code-keyword">val</span> startOffset = fileDescriptor.startOffset
+        <span class="code-keyword">val</span> declaredLength = fileDescriptor.declaredLength
+        
+        <span class="code-comment">// 4. Ánh xạ trực tiếp file vào bộ nhớ dưới dạng READ_ONLY</span>
+        <span class="code-keyword">val</span> modelBuffer = fileChannel.map(
+            <span class="code-class">FileChannel</span>.<span class="code-class">MapMode</span>.READ_ONLY, 
+            startOffset, 
+            declaredLength
+        )
+        
+        <span class="code-comment">// 5. Đóng descriptor để tránh rò rỉ tài nguyên hệ thống</span>
+        fileDescriptor.close()
+        
+        <span class="code-keyword">return</span> modelBuffer
+    }
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="callout callout-important">
+        <i data-lucide="shield-alert" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Xử lý lỗi rò rỉ bộ nhớ (Memory Leak):</span>
+          <p>Luôn bọc luồng code khởi tạo mô hình trong khối <code>try-catch</code>. Nếu quá trình load mô hình bị lỗi (ví dụ: file bị hỏng hoặc tên file viết sai chính tả), ứng dụng của bạn sẽ báo lỗi tường tận thay vì crash đột ngột.</p>
+        </div>
+      </div>

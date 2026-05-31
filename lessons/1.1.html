@@ -1,0 +1,31 @@
+<p>Chào mừng bạn đến với thế giới của <strong>Edge AI (Trí tuệ nhân tạo biên)</strong>! Trước khi đi sâu vào kỹ thuật, hãy cùng làm rõ khái niệm cơ bản nhưng vô cùng quan trọng này.</p>
+      
+      <h2>1. Edge AI & Mobile AI là gì?</h2>
+      <p>Trong kỷ nguyên sơ khởi của AI, hầu hết các mô hình ngôn ngữ lớn (như GPT-4) hay mô hình xử lý hình ảnh nặng đều chạy trên <strong>Cloud (Đám mây)</strong>. Khi bạn gửi một bức ảnh hoặc câu hỏi, dữ liệu sẽ được gửi qua Internet tới máy chủ mạnh mẽ, máy chủ xử lý rồi gửi kết quả trả về điện thoại của bạn.</p>
+      
+      <p><strong>Edge AI (hay On-Device AI)</strong> đảo ngược quy trình này. Thay vì gửi dữ liệu lên mây, chúng ta mang mô hình AI về chạy <strong>trực tiếp ngay trên thiết bị đầu cuối (Edge device)</strong> của người dùng như: Điện thoại di động (Android/iOS), đồng hồ thông minh, máy ảnh thông minh, kính VR hoặc các bo mạch nhúng (Raspberry Pi).</p>
+
+      <h2>2. Tại sao On-Device AI lại là xu hướng tất yếu?</h2>
+      <p>Mặc dù máy chủ đám mây có sức mạnh tính toán khổng lồ, nhưng nó lại gặp phải 4 rào cản chí mạng sau đây:</p>
+      
+      <div class="callout callout-important">
+        <i data-lucide="zap" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">4 Ưu thế vượt trội của On-Device AI:</span>
+          <ul>
+            <li><strong>Độ trễ cực thấp (Low Latency):</strong> Không mất thời gian truyền dữ liệu qua Internet (mất từ 100ms - 2s). Mô hình chạy nội bộ chỉ mất từ 5ms - 30ms, đáp ứng hoàn hảo cho camera thời gian thực, game, hoặc nhận diện cử chỉ.</li>
+            <li><strong>Bảo mật & Quyền riêng tư (Privacy):</strong> Dữ liệu nhạy cảm của người dùng (giọng nói, hình ảnh khuôn mặt, dữ liệu y tế) được xử lý ngay tại máy và không bao giờ rời khỏi thiết bị. Điều này giúp ứng dụng dễ dàng đạt chuẩn bảo mật như GDPR hoặc HIPAA.</li>
+            <li><strong>Hoạt động ngoại tuyến (Offline Capability):</strong> Ứng dụng AI của bạn vẫn hoạt động mượt mà ngay cả khi người dùng ở trong tầng hầm, trên máy bay, ngoài đảo hoang hoặc ở khu vực không có sóng mạng.</li>
+            <li><strong>Tiết kiệm chi phí vận hành (Zero Server Cost):</strong> Chạy mô hình trên hàng triệu thiết bị của người dùng đồng nghĩa với việc bạn đang tận dụng CPU/GPU/NPU miễn phí của họ. Bạn sẽ không tốn hàng nghìn USD hàng tháng cho hóa đơn API của máy chủ đám mây!</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>3. Thách thức lớn khi deploy AI lên di động</h2>
+      <p>Mặc dù rất hấp dẫn, việc đưa AI lên thiết bị di động không hề dễ dàng do giới hạn phần cứng nghiêm ngặt:</p>
+      <ul>
+        <li><strong>Dung lượng RAM eo hẹp:</strong> Một ứng dụng Android thông thường chỉ được cấp phát từ vài chục đến vài trăm MB RAM. Nếu mô hình AI của bạn nặng 1GB, hệ điều hành Android sẽ tắt ngay ứng dụng (Out of Memory - OOM).</li>
+        <li><strong>Dung lượng lưu trữ giới hạn:</strong> Người dùng sẽ không muốn tải một ứng dụng di động nặng tới 500MB chỉ để quét mã vạch hay nhận diện khuôn mặt.</li>
+        <li><strong>Năng lượng pin:</strong> Chạy các ma trận số thực dấu phẩy động 32-bit liên tục sẽ làm nóng máy cực nhanh và rút pin điện thoại chỉ trong vài giờ.</li>
+      </ul>
+      <p>Để giải quyết các thách thức này, chúng ta cần một framework chuyên dụng cực nhẹ và mạnh mẽ: <strong>TFLite / LiteRT</strong>.</p>

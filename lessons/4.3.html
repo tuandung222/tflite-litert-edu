@@ -1,0 +1,69 @@
+<p>Kỷ nguyên Generative AI đang bùng nổ, và giờ đây bạn hoàn toàn có thể chạy các <strong>Small Language Models (SLM)</strong> như **Gemma 2B, Llama 3.2 1B/3B, hay Phi-3** trực tiếp ngay trên chính chiếc điện thoại Android/iOS của mình một cách hoàn toàn offline!</p>
+
+      <h2>1. MediaPipe LLM Inference API là gì?</h2>
+      <p>Để chạy các mô hình GenAI tự hồi quy (Auto-regressive) siêu phức tạp chứa hàng tỷ tham số, việc sử dụng Interpreter thô của TFLite là rất khó khăn. </p>
+      
+      <p>Google đã phát triển bộ công cụ **MediaPipe LLM Inference API** chạy đè lên nhân của LiteRT. Nó được thiết kế tối ưu riêng để chạy các mô hình ngôn ngữ lớn thu nhỏ thông qua việc tích hợp sâu cơ chế **KV Caching** (lưu trữ khóa/giá trị lịch sử hội thoại) và **quantization INT4/INT8** tối ưu phần cứng của GPU di động.</p>
+
+      <h2>2. Chuẩn bị file mô hình SLM lượng tử hóa</h2>
+      <p>Để chạy được offline, mô hình bắt buộc phải được lượng tử hóa sâu về dạng số nguyên 4-bit (INT4) để giảm kích thước (ví dụ: Gemma 2B INT4 có kích thước file <code>.bin</code> khoảng **1.3 GB**, vừa vặn với RAM của điện thoại di động).</p>
+
+      <h2>3. Code Kotlin tích hợp trọn vẹn mô hình SLM</h2>
+      <p>Thêm dependency vào Gradle:</p>
+      <pre style="background:#090d16; padding:0.75rem; border-radius:8px; font-family:var(--font-code); font-size:0.85rem; margin:0.5rem 0;">implementation("com.google.mediapipe:tasks-genai:0.10.14")</pre>
+
+      <p>Dưới đây là mã nguồn Kotlin chuẩn để tải mô hình và sinh văn bản dòng chảy thời gian thực (streaming text generation):</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>Kotlin (LlmInferenceService.kt)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code><span class="code-keyword">import</span> android.content.Context
+<span class="code-keyword">import</span> com.google.mediapipe.tasks.genai.llminference.LlmInference
+<span class="code-keyword">import</span> java.io.File
+
+<span class="code-keyword">class</span> <span class="code-class">OnDeviceLLMManager</span>(private <span class="code-keyword">val</span> context: <span class="code-class">Context</span>) {
+
+    <span class="code-keyword">private var</span> llmInference: <span class="code-class">LlmInference</span>? = <span class="code-keyword">null</span>
+    
+    <span class="code-keyword">fun</span> <span class="code-function">initializeModel</span>(modelPath: <span class="code-class">String</span>) {
+        <span class="code-comment">// 1. Khởi tạo tùy chọn cấu hình cho mô hình lớn</span>
+        <span class="code-keyword">val</span> options = <span class="code-class">LlmInference</span>.<span class="code-class">LlmInferenceOptions</span>.builder()
+            .setModelFilePath(modelPath) <span class="code-comment">// Đường dẫn tới file gemma-2b-it-cpu-int4.bin</span>
+            .setMaxTokens(512) <span class="code-comment">// Chiều dài tối đa của câu trả lời</span>
+            .setTemperature(0.7f) <span class="code-comment">// Độ sáng tạo của câu trả lời</span>
+            .setRandomSeed(42)
+            .build()
+            
+        <span class="code-comment">// 2. Khởi dựng LlmInference</span>
+        llmInference = <span class="code-class">LlmInference</span>.createFromOptions(context, options)
+    }
+
+    <span class="code-comment">/**
+     * Thực thi hội thoại và trả về kết quả dòng chảy thời gian thực (Streaming output)
+     */</span>
+    <span class="code-keyword">fun</span> <span class="code-function">chatStream</span>(prompt: <span class="code-class">String</span>, onTokenReceived: (text: <span class="code-class">String</span>, isCompleted: <span class="code-class">Boolean</span>) -&gt; <span class="code-class">Unit</span>) {
+        <span class="code-keyword">val</span> engine = llmInference
+        <span class="code-keyword">if</span> (engine == <span class="code-keyword">null</span>) {
+            onTokenReceived(<span class="code-string">"Lỗi: Mô hình chưa được khởi tạo!"</span>, <span class="code-keyword">true</span>)
+            <span class="code-keyword">return</span>
+        }
+
+        <span class="code-comment">// Bọc prompt theo định dạng template hội thoại mong muốn</span>
+        <span class="code-keyword">val</span> formattedPrompt = <span class="code-string">"&lt;start_of_turn&gt;user\n$prompt&lt;end_of_turn&gt;\n&lt;start_of_turn&gt;model\n"</span>
+
+        <span class="code-comment">// 3. Kích hoạt sinh văn bản dạng async không đồng bộ để không khóa giao diện</span>
+        engine.generateAsync(formattedPrompt) { partialResult, isDone -&gt;
+            onTokenReceived(partialResult, isDone)
+        }
+    }
+
+    <span class="code-keyword">fun</span> <span class="code-function">close</span>() {
+        llmInference?.close()
+        llmInference = <span class="code-keyword">null</span>
+    }
+}</code></pre>
+        </div>
+      </div>

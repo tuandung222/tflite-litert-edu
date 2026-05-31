@@ -1,0 +1,33 @@
+<p>Để trở thành một chuyên gia deploy AI trên Mobile, bạn cần nắm vững kiến trúc bên trong của LiteRT. Hệ thống này được chia làm hai khối độc lập chính:</p>
+      
+      <div class="math-block">
+        Model (Python/Keras/PyTorch) ➔ <strong>LiteRT Converter</strong> ➔ File .tflite ➔ <strong>LiteRT Interpreter</strong> (Mobile Device)
+      </div>
+
+      <h2>1. Bộ chuyển đổi (LiteRT Converter) - Thực hiện Offline trên PC</h2>
+      <p>Bộ chuyển đổi hoạt động trong môi trường phát triển (Python trên PC/Colab của bạn). Nhiệm vụ của nó là nhận một mô hình đã train sẵn (từ TensorFlow, Keras, JAX, hoặc PyTorch) và xuất ra file định dạng <code>.tflite</code>.</p>
+      <p>Trong quá trình chuyển đổi, Converter thực hiện tối ưu hóa cấu trúc đồ thị (Graph Optimizations):</p>
+      <ul>
+        <li><strong>Fusing Operators (Hợp nhất toán tử):</strong> Gộp nhiều lớp toán tử đơn lẻ (ví dụ: Tích chập Conv2D + Batch Normalization + Activation ReLU) thành một toán tử duy nhất để giảm dung lượng bộ nhớ trung gian và tăng tốc xử lý.</li>
+        <li><strong>Constant Folding (Gấp hằng số):</strong> Tính toán trước các biểu thức toán học chứa hằng số ngay lúc chuyển đổi để không phải tính lại khi chạy trên điện thoại.</li>
+        <li><strong>Quantization (Lượng tử hóa):</strong> Giảm kích thước mô hình (sẽ học chi tiết ở Module 2).</li>
+      </ul>
+
+      <h2>2. Định dạng File FlatBuffers (.tflite)</h2>
+      <p>File kết quả đầu ra có đuôi là <code>.tflite</code> được xây dựng trên công nghệ **FlatBuffers** của Google thay vì Protocol Buffers (định dạng <code>.pb</code> truyền thống).</p>
+      
+      <div class="callout callout-important">
+        <i data-lucide="database" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Sức mạnh của FlatBuffers:</span>
+          <p>FlatBuffers cho phép LiteRT load mô hình trực tiếp từ ổ đĩa vào RAM của điện thoại dưới dạng nhị phân thô (Raw binary segment) và chạy tính toán trực tiếp trên đó mà **không cần bước giải tuần tự (Zero-Deserialization)**. Điều này giúp ứng dụng khởi động ngay lập tức và tiết kiệm tối đa RAM.</p>
+        </div>
+      </div>
+
+      <h2>3. Bộ thông dịch (LiteRT Interpreter) - Chạy Real-time trên Mobile</h2>
+      <p>Bộ thông dịch là nhân tố cốt lõi chạy trực tiếp trên ứng dụng di động Android/iOS của bạn. Nó đảm nhận các vai trò:</p>
+      <ul>
+        <li><strong>Load Model:</strong> Đọc file <code>.tflite</code> từ bộ nhớ.</li>
+        <li><strong>Cấp phát Tensor (Tensor Allocation):</strong> Tính toán và chuẩn bị sẵn bộ nhớ đệm cần thiết cho các lớp đầu vào, trung gian và đầu ra.</li>
+        <li><strong>Thực thi hạt nhân (Kernel Execution):</strong> Gọi các hàm toán học tối ưu hóa cao được viết bằng C++ (hỗ trợ tập lệnh NEON SIMD của ARM CPU) để tính toán đầu ra từ đầu vào của người dùng.</li>
+      </ul>

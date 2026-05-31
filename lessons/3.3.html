@@ -1,0 +1,61 @@
+<p>Một trong những lỗi phổ biến nhất khiến mô hình AI dự đoán sai bét trên điện thoại là **sai lệch trong bước tiền xử lý ảnh (Preprocessing)**. Mô hình trên máy tính được huấn luyện với các ảnh chuẩn hóa thế nào, thì ảnh chụp từ camera điện thoại phải được tiền xử lý giống hệt như vậy.</p>
+
+      <h2>1. Quy trình Tiền xử lý hình ảnh chuẩn</h2>
+      <p>Ảnh chụp từ Camera điện thoại là một tấm hình lớn đầy màu sắc. Mô hình của bạn (ví dụ MobileNet) chỉ nhận ảnh kích thước chuẩn $224 	imes 224$ pixel. Do đó ta cần:</p>
+      
+      <div class="math-block">
+        Camera Stream ➔ Xoay (Rotation) ➔ Cắt ảnh vuông (Crop) ➔ Giảm size (Scale) ➔ Chuẩn hóa (Normalize) ➔ Nạp ByteBuffer
+      </div>
+
+      <h2>2. Viết hàm tiền xử lý hình ảnh tối ưu bằng Kotlin</h2>
+      <p>Sử dụng thư viện <code>tensorflow-lite-support</code> giúp rút gọn 90% dòng code tiền xử lý phức tạp nhờ các lớp <code>ImageProcessor</code> và <code>TensorImage</code>:</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>Kotlin (ImagePreprocessing.kt)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code><span class="code-keyword">import</span> android.graphics.Bitmap
+<span class="code-keyword">import</span> org.tensorflow.lite.DataType
+<span class="code-keyword">import</span> org.tensorflow.lite.support.image.ImageProcessor
+<span class="code-keyword">import</span> org.tensorflow.lite.support.image.TensorImage
+<span class="code-keyword">import</span> org.tensorflow.lite.support.image.ops.ResizeOp
+<span class="code-keyword">import</span> org.tensorflow.lite.support.image.ops.RotatorOp
+<span class="code-keyword">import</span> org.tensorflow.lite.support.common.ops.NormalizeOp
+<span class="code-keyword">import</span> java.nio.ByteBuffer
+
+<span class="code-keyword">class</span> <span class="code-class">ImagePreprocessor</span>(
+    <span class="code-keyword">val</span> targetWidth: <span class="code-class">Int</span> = 224,
+    <span class="code-keyword">val</span> targetHeight: <span class="code-class">Int</span> = 224
+) {
+    <span class="code-comment">// 1. Định nghĩa bộ chuẩn hóa: Ánh xạ pixel [0, 255] về dải thực [-1.0, 1.0] 
+    // Công thức: output = (pixel - mean) / std</span>
+    <span class="code-keyword">private val</span> normalizeOp = <span class="code-class">NormalizeOp</span>(127.5f, 127.5f)
+
+    <span class="code-keyword">fun</span> <span class="code-function">preprocess</span>(bitmap: <span class="code-class">Bitmap</span>, rotationDegrees: <span class="code-class">Int</span>): <span class="code-class">TensorImage</span> {
+        <span class="code-comment">// 2. Khởi tạo đối tượng chứa ảnh có kiểu Float32 (khớp đầu vào mô hình)</span>
+        <span class="code-keyword">val</span> tensorImage = <span class="code-class">TensorImage</span>(<span class="code-class">DataType</span>.FLOAT32)
+        tensorImage.load(bitmap)
+
+        <span class="code-comment">// 3. Thiết lập chuỗi xử lý ảnh tuần tự cực mạnh</span>
+        <span class="code-keyword">val</span> imageProcessor = <span class="code-class">ImageProcessor</span>.<span class="code-class">Builder</span>()
+            .add(<span class="code-class">RotatorOp</span>(rotationDegrees / 90)) <span class="code-comment">// Xoay ảnh cho đúng hướng camera</span>
+            .add(<span class="code-class">ResizeOp</span>(targetWidth, targetHeight, <span class="code-class">ResizeOp</span>.<span class="code-class">ResizeMethod</span>.BILINEAR)) <span class="code-comment">// Thu nhỏ ảnh về 224x224</span>
+            .add(normalizeOp) <span class="code-comment">// Chuẩn hóa số thực</span>
+            .build()
+
+        <span class="code-comment">// 4. Thực thi tiền xử lý và trả về TensorImage sẵn sàng chạy</span>
+        <span class="code-keyword">return</span> imageProcessor.process(tensorImage)
+    }
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="callout callout-important">
+        <i data-lucide="zap" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Lưu ý về dải chuẩn hóa (Normalization):</span>
+          <p>Nếu mô hình của bạn là dạng Lượng tử hóa toàn phần (Full Integer Int8 Model), giá trị đầu vào của mô hình sẽ là kiểu số nguyên 8-bit chứ không phải Float32. Khi đó, ở bước tạo <code>TensorImage</code> bạn phải chọn kiểu <code>DataType.UINT8</code> hoặc <code>DataType.INT8</code> và loại bỏ bước <code>NormalizeOp</code> số thực đi.</p>
+        </div>
+      </div>

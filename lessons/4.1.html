@@ -1,0 +1,84 @@
+<p><strong>Image Classification (Phân loại hình ảnh)</strong> là ứng dụng "kinh điển" và phổ biến nhất của AI trên di động. Hãy cùng xem cách triển khai thực tế mô hình phân loại ảnh nổi tiếng **MobileNetV2** (gồm 1001 lớp đối tượng) trên thiết bị di động.</p>
+      
+      <h2>1. Kiến trúc luồng xử lý và luồng dữ liệu</h2>
+      <ul>
+        <li><strong>Đầu vào (Input):</strong> Khung hình Camera có kích thước bất kỳ, được tiền xử lý thu nhỏ về chuẩn $224 	imes 224$ pixel, 3 kênh màu RGB. Kiểu dữ liệu Float32. Đầu vào có hình dạng (shape) dạng ma trận 4 chiều: <code>[1, 224, 224, 3]</code>.</li>
+        <li><strong>Đầu ra (Output):</strong> Một mảng Float32 chứa 1001 phần tử có shape: <code>[1, 1001]</code>. Mỗi phần tử là một xác suất (từ 0.0 đến 1.0) cho thấy bức ảnh khớp với một trong 1001 nhãn (như con mèo, cái ghế, ô tô, v.v.).</li>
+      </ul>
+
+      <h2>2. Viết Code Kotlin triển khai trọn vẹn</h2>
+      <p>Dưới đây là mã nguồn Kotlin hoàn chỉnh, hiệu năng cao để thực thi phân loại ảnh sử dụng LiteRT Support Library để xử lý nhãn và tiền xử lý:</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>Kotlin (ClassifierActivity.kt)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code><span class="code-keyword">import</span> android.content.Context
+<span class="code-keyword">import</span> android.graphics.Bitmap
+<span class="code-keyword">import</span> org.tensorflow.lite.DataType
+<span class="code-keyword">import</span> org.tensorflow.lite.Interpreter
+<span class="code-keyword">import</span> org.tensorflow.lite.support.common.FileUtil
+<span class="code-keyword">import</span> org.tensorflow.lite.support.image.ImageProcessor
+<span class="code-keyword">import</span> org.tensorflow.lite.support.image.TensorImage
+<span class="code-keyword">import</span> org.tensorflow.lite.support.image.ops.ResizeOp
+<span class="code-keyword">import</span> org.tensorflow.lite.support.label.Category
+<span class="code-keyword">import</span> org.tensorflow.lite.support.tensorbuffer.TensorBuffer
+<span class="code-keyword">import</span> java.nio.MappedByteBuffer
+
+<span class="code-keyword">class</span> <span class="code-class">MobileNetClassifier</span>(private <span class="code-keyword">val</span> context: <span class="code-class">Context</span>) {
+
+    <span class="code-keyword">private var</span> interpreter: <span class="code-class">Interpreter</span>? = <span class="code-keyword">null</span>
+    <span class="code-keyword">private var</span> labels: <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; = emptyList()
+
+    <span class="code-keyword">init</span> {
+        <span class="code-comment">// 1. Load model MappedByteBuffer từ assets</span>
+        <span class="code-keyword">val</span> modelBuffer: <span class="code-class">MappedByteBuffer</span> = <span class="code-class">ModelLoader</span>.loadModelFile(context, <span class="code-string">"mobilenet_v2.tflite"</span>)
+        
+        <span class="code-comment">// 2. Đọc file nhãn đi kèm nhúng trong assets</span>
+        labels = <span class="code-class">FileUtil</span>.loadLabels(context, <span class="code-string">"labels.txt"</span>)
+        
+        <span class="code-comment">// 3. Cấu hình đa luồng và khởi tạo Interpreter</span>
+        <span class="code-keyword">val</span> options = <span class="code-class">Interpreter</span>.<span class="code-class">Options</span>().apply { setNumThreads(4) }
+        interpreter = <span class="code-class">Interpreter</span>(modelBuffer, options)
+    }
+
+    <span class="code-keyword">fun</span> <span class="code-function">classify</span>(bitmap: <span class="code-class">Bitmap</span>): <span class="code-class">List</span>&lt;<span class="code-class">Category</span>&gt; {
+        <span class="code-keyword">val</span> inst = interpreter ?: <span class="code-keyword">return</span> emptyList()
+
+        <span class="code-comment">// 4. Tiền xử lý ảnh Bitmap đầu vào đưa về kích thước 224x224 kiểu Float32</span>
+        <span class="code-keyword">val</span> imageProcessor = <span class="code-class">ImageProcessor</span>.<span class="code-class">Builder</span>()
+            .add(<span class="code-class">ResizeOp</span>(224, 224, <span class="code-class">ResizeOp</span>.<span class="code-class">ResizeMethod</span>.BILINEAR))
+            .build()
+        <span class="code-keyword">val</span> tensorImage = <span class="code-class">TensorImage</span>(<span class="code-class">DataType</span>.FLOAT32)
+        tensorImage.load(bitmap)
+        <span class="code-keyword">val</span> processedImage = imageProcessor.process(tensorImage)
+
+        <span class="code-comment">// 5. Tạo bộ đệm đầu ra chứa xác suất (shape là [1, 1001])</span>
+        <span class="code-keyword">val</span> outputBuffer = <span class="code-class">TensorBuffer</span>.createFixedSize(intArrayOf(1, 1001), <span class="code-class">DataType</span>.FLOAT32)
+
+        <span class="code-comment">// 6. Thực thi mô hình</span>
+        inst.run(processedImage.buffer, outputBuffer.buffer.rewind())
+
+        <span class="code-comment">// 7. Ánh xạ mảng điểm số đầu ra sang đối tượng Category chứa tên nhãn tường minh</span>
+        <span class="code-keyword">val</span> probabilityMap = mutableListOf&lt;<span class="code-class">Category</span>&gt;()
+        <span class="code-keyword">val</span> outputArray = outputBuffer.floatArray
+        <span class="code-keyword">for</span> (i <span class="code-keyword">in</span> outputArray.indices) {
+            <span class="code-keyword">if</span> (i &lt; labels.size) {
+                probabilityMap.add(<span class="code-class">Category</span>(labels[i], outputArray[i]))
+            }
+        }
+
+        <span class="code-comment">// 8. Sắp xếp điểm số từ cao xuống thấp và trả về top 3 dự đoán tự tin nhất</span>
+        probabilityMap.sortByDescending { it.score }
+        <span class="code-keyword">return</span> probabilityMap.take(3)
+    }
+
+    <span class="code-keyword">fun</span> <span class="code-function">close</span>() {
+        interpreter?.close()
+        interpreter = <span class="code-keyword">null</span>
+    }
+}</code></pre>
+        </div>
+      </div>

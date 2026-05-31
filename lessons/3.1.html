@@ -1,0 +1,52 @@
+<p>Chào mừng bạn đến với phần thú vị nhất: Viết code Android! Trước khi viết code Kotlin, bạn cần khai báo các thư viện LiteRT vào dự án thông qua Gradle.</p>
+
+      <h2>1. Thêm dependencies vào file build.gradle</h2>
+      <p>Mở file <code>app/build.gradle.kts</code> (hoặc <code>build.gradle</code> nếu dùng Groovy) và thêm thư viện LiteRT cơ bản:</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>build.gradle.kts (Kotlin DSL)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code>dependencies {
+    <span class="code-comment">// Thư viện lõi LiteRT (TensorFlow Lite cũ)</span>
+    implementation(<span class="code-string">"org.tensorflow:tensorflow-lite:2.16.1"</span>)
+    
+    <span class="code-comment">// Thư viện hỗ trợ xử lý ảnh và tensor tiện ích</span>
+    implementation(<span class="code-string">"org.tensorflow:tensorflow-lite-support:0.4.4"</span>)
+    
+    <span class="code-comment">// Thư viện hỗ trợ tăng tốc phần cứng GPU (Tùy chọn)</span>
+    implementation(<span class="code-string">"org.tensorflow:tensorflow-lite-gpu:2.16.1"</span>)
+}</code></pre>
+        </div>
+      </div>
+
+      <h2>2. Ngăn Gradle nén nén file mô hình .tflite (Cực kỳ quan trọng!)</h2>
+      <p>Mặc định, khi build file cài đặt ứng dụng Android (APK), hệ thống build Gradle sẽ tự động nén tất cả các file trong thư mục <code>assets</code> để giảm dung lượng tải. </p>
+      <p>Tuy nhiên, **nếu file .tflite bị nén, hệ điều hành Android sẽ không thể thực hiện cơ chế ánh xạ bộ nhớ trực tiếp (Memory Map - mmap)**. Lúc đó ứng dụng buộc phải giải nén toàn bộ mô hình vào RAM, làm tăng thời gian mở ứng dụng và tốn cực nhiều RAM.</p>
+      
+      <p>Để ngăn điều này, bạn **bắt buộc** phải thêm cấu hình sau vào trong block <code>android { ... }</code> của file <code>build.gradle.kts</code>:</p>
+
+      <div class="code-container">
+        <div class="code-header">
+          <span>build.gradle.kts (Android Block)</span>
+          <button class="btn-copy" onclick="copyCode(this)"><i data-lucide="copy" class="btn-copy-icon"></i>Copy</button>
+        </div>
+        <div class="code-body active">
+          <pre><code>android {
+    ...
+    aaptOptions {
+        <span class="code-comment">// Chỉ định Gradle KHÔNG được nén các file có đuôi .tflite trong assets</span>
+        noCompress(<span class="code-string">"tflite"</span>)
+    }
+}</code></pre>
+        </div>
+      </div>
+
+      <h2>3. Đặt file mô hình vào thư mục Assets</h2>
+      <p>Sau khi thiết lập gradle xong:</p>
+      <ol>
+        <li>Tạo một thư mục tên là <code>assets</code> nằm trong thư mục nguồn: <code>app/src/main/assets/</code>.</li>
+        <li>Sao chép file mô hình <code>optimized_model.tflite</code> đã tối ưu của bạn vào thư mục này.</li>
+      </ol>

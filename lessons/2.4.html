@@ -1,0 +1,48 @@
+<p>Làm thế nào máy tính có thể biểu diễn một số thực phức tạp như $3.14159$ thành số nguyên 8-bit chạy từ $-128$ đến $127$? Hãy cùng khám phá công thức toán học đằng sau giải thuật này.</p>
+      
+      <h2>1. Công thức Lượng tử hóa Tuyến tính (Linear Quantization)</h2>
+      <p>LiteRT sử dụng giải thuật lượng tử hóa tuyến tính đối xứng hoặc bất đối xứng, ánh xạ giá trị thực $r$ (real) sang giá trị số nguyên $q$ (quantized) thông qua hai tham số: **Scale ($S$)** và **Zero-point ($Z$)**.</p>
+      
+      <div class="math-block">
+        $$q = 	ext{round}left(rac{r}{S}ight) + Z$$
+      </div>
+
+      <p>Trong đó:</p>
+      <ul>
+        <li><strong>$r$ (Real value):</strong> Giá trị số thực Float32 ban đầu.</li>
+        <li><strong>$q$ (Quantized value):</strong> Giá trị số nguyên Int8 kết quả. $q$ bắt buộc phải nằm trong dải giới hạn của kiểu dữ liệu (với Int8 là $[-128, 127]$). Nếu vượt quá, giá trị sẽ bị cắt (**Clip**).</li>
+        <li><strong>$S$ (Scale - Tỷ lệ):</strong> Một số thực dương Float32 thể hiện khoảng cách giữa các vạch chia số nguyên.</li>
+        <li><strong>$Z$ (Zero-point - Điểm không):</strong> Một số nguyên Int8. Nó đại diện cho giá trị số thực $r = 0$ sẽ được ánh xạ chính xác về số nguyên nào trong miền lượng tử. Điều này vô cùng quan trọng vì trong mạng nơ-ron, giá trị $0$ (từ lớp ReLU, hay Padding biên) xuất hiện cực kỳ nhiều.</li>
+      </ul>
+
+      <h2>2. Công thức khôi phục số thực (De-quantization)</h2>
+      <p>Để chuyển đổi ngược từ số nguyên lượng tử $q$ về số thực xấp xỉ ban đầu $r_{approx}$, ta dùng công thức:</p>
+      <div class="math-block">
+        $$r_{approx} = S 	imes (q - Z)$$
+      </div>
+
+      <h2>3. Ví dụ tính toán bằng tay từng bước</h2>
+      <p>Giả sử chúng ta đo được dải giá trị thực của một lớp trọng số chạy từ $[r_{min}, r_{max}] = [-10.0, 10.0]$.</p>
+      <p>Chúng ta muốn ánh xạ dải này vào miền số nguyên Int8 chạy từ $[q_{min}, q_{max}] = [-128, 127]$.</p>
+      
+      <h3>Bước A: Tính toán Scale ($S$)</h3>
+      <p>$$S = rac{r_{max} - r_{min}}{q_{max} - q_{min}} = rac{10.0 - (-10.0)}{127 - (-128)} = rac{20.0}{255} approx 0.07843$$</p>
+
+      <h3>Bước B: Tính toán Zero-point ($Z$)</h3>
+      <p>Vì dải đối xứng qua điểm 0 nên điểm thực $r = 0.0$ sẽ tương đương số nguyên $q = 0$. Vậy $Z = 0$.</p>
+
+      <h3>Bước C: Lượng tử hóa một giá trị cụ thể $r = 2.5$</h3>
+      <p>$$q = 	ext{round}left(rac{2.5}{0.07843}ight) + 0 = 	ext{round}(31.87) = 32$$</p>
+      <p>Vậy số thực **$2.5$** đã được lưu trữ cực gọn gàng dưới dạng số nguyên **$32$** trong file <code>.tflite</code>.</p>
+
+      <h3>Bước D: Giải lượng tử để tính toán (De-quantize)</h3>
+      <p>$$r_{approx} = 0.07843 	imes (32 - 0) = 2.50976$$</p>
+      <p><strong>Sai số làm tròn (Quantization Error):</strong> $2.50976 - 2.5 = 0.00976$ (~$0.39%$). Sai số cực nhỏ này hoàn toàn có thể chấp nhận được để đổi lấy mức tăng tốc hiệu năng 4 lần!</p>
+
+      <div class="callout callout-important">
+        <i data-lucide="sliders" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Thử nghiệm trực quan:</span>
+          <p>Hãy nhìn sang bảng điều khiển bên phải! Tôi đã xây dựng riêng cho bạn một **Bộ giả lập Quantization Simulator**. Bạn có thể kéo slider giá trị thực, thay đổi Scale/Zero-point và xem từng bước tính toán chi tiết hiển thị tức thì.</p>
+        </div>
+      </div>

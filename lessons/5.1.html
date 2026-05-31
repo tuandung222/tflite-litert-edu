@@ -1,0 +1,33 @@
+<p>Để giúp bạn thực hành trực quan và trực tiếp trên PC của mình, tôi đã tạo ra một file Jupyter Notebook hoàn chỉnh có tên là <code>01_model_conversion_and_quantization.ipynb</code> nằm trong thư mục <code>notebooks/</code> của dự án.</p>
+      
+      <h2>1. Hướng dẫn sử dụng file thực hành</h2>
+      <p>File notebook này chứa toàn bộ code Python đầy đủ, giải thích chi tiết và các ô lệnh chạy được ngay giúp bạn:</p>
+      <ul>
+        <li>Tải một mô hình mạng nơ-ron tích chập (CNN MobileNetV2) đã train sẵn từ thư viện Keras.</li>
+        <li>Sử dụng API <code>tf.lite.TFLiteConverter</code> để chuyển đổi mô hình sang định dạng <code>.tflite</code> cơ bản dạng Float32.</li>
+        <li>Thực hành cấu hình **Dynamic Range Quantization** để ép mô hình giảm 4 lần dung lượng chỉ với 3 dòng code.</li>
+        <li>Thực hành cấu hình **Float16 Quantization** tối ưu sâu cho GPU di động.</li>
+        <li>Thực hành **Full Integer Quantization** thông qua việc xây dựng một bộ dữ liệu mẫu (Representative Dataset) hiệu chuẩn dải phân phối.</li>
+        <li>**Chạy đo đạc, so sánh kích thước file** (dung lượng KB/MB) và thời gian load mô hình trên đĩa của các phương pháp tối ưu hóa trên.</li>
+      </ul>
+
+      <h2>2. Cách chạy Notebook cục bộ</h2>
+      <ol>
+        <li>Mở terminal trên máy tính của bạn.</li>
+        <li>Cài đặt các gói thư viện cần thiết:
+          <pre style="background:#090d16; padding:0.75rem; border-radius:8px; font-family:var(--font-code); font-size:0.85rem; margin:0.5rem 0;">pip install tensorflow jupyter matplotlib</pre>
+        </li>
+        <li>Di chuyển vào thư mục dự án và mở Jupyter Notebook:
+          <pre style="background:#090d16; padding:0.75rem; border-radius:8px; font-family:var(--font-code); font-size:0.85rem; margin:0.5rem 0;">cd /Users/admin/TuanDung/repos/tflite-litert-edu/notebooks
+jupyter notebook</pre>
+        </li>
+        <li>Nhấp chuột vào file <code>01_model_conversion_and_quantization.ipynb</code> và bắt đầu chạy thực tế từng dòng code!</li>
+      </ol>
+
+      <div class="callout callout-important">
+        <i data-lucide="file-text" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Đường dẫn file Notebook trong dự án của bạn:</span>
+          <p>File thực hành số 1 đã được tạo và lưu trữ đầy đủ tại: <a href="file:///Users/admin/TuanDung/repos/tflite-litert-edu/notebooks/01_model_conversion_and_quantization.ipynb" style="color:var(--accent-primary); font-weight:600;">notebooks/01_model_conversion_and_quantization.ipynb</a></p>
+        </div>
+      </div>

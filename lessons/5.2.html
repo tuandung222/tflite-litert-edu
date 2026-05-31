@@ -1,0 +1,22 @@
+<p>Sau khi có được file mô hình <code>.tflite</code> đã tối ưu, làm thế nào để ứng dụng di động Android hiểu được mô hình này nhận đầu vào dải màu gì? Thứ tự nhãn kết quả phân loại ở đâu? Chúng ta cần nhúng **Metadata** trực tiếp vào mô hình.</p>
+      
+      <h2>1. Nội dung bài thực hành Notebook số 2</h2>
+      <p>File thực hành <code>02_model_metadata_and_python_inference.ipynb</code> trong thư mục <code>notebooks/</code> sẽ hướng dẫn bạn các kỹ thuật nâng cao bao gồm:</p>
+      <ul>
+        <li><strong>Đóng gói Metadata cấu trúc:</strong> Sử dụng thư viện <code>tflite-support</code> để nhúng các metadata kỹ thuật như: Tên tác giả, mô tả mô hình, tham số tiền xử lý mong muốn (Mean/Std), và quan trọng nhất là nhúng trực tiếp file nhãn văn bản (ví dụ: <code>labels.txt</code> chứa tên các con vật, đồ vật) vào bên trong file nhãn của mô hình nhị phân.</li>
+        <li><strong>Chạy thử mô hình bằng Python Interpreter:</strong> Viết code sử dụng thư viện siêu gọn nhẹ <code>tflite_runtime</code> để load mô hình <code>.tflite</code> đã convert, nạp ảnh thực tế, tiền xử lý và chạy dự đoán ngay trên máy tính của bạn trước khi đưa mô hình vào Android Studio. Điều này giúp cô lập và kiểm chứng chắc chắn mô hình hoạt động chính xác 100%.</li>
+      </ul>
+
+      <h2>2. Cách chạy Notebook</h2>
+      <p>Bạn thực hiện mở Jupyter giống như bài 4.1 và click vào file notebook số 2 để thực hành:</p>
+      <pre style="background:#090d16; padding:0.75rem; border-radius:8px; font-family:var(--font-code); font-size:0.85rem; margin:1rem 0;"># Di chuyển và mở notebook thứ hai
+cd /Users/admin/TuanDung/repos/tflite-litert-edu/notebooks
+jupyter notebook</pre>
+
+      <div class="callout callout-important">
+        <i data-lucide="file-text" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Đường dẫn file Notebook thứ 2 trong dự án:</span>
+          <p>File thực hành số 2 đã được lưu trữ sẵn sàng tại: <a href="file:///Users/admin/TuanDung/repos/tflite-litert-edu/notebooks/02_model_metadata_and_python_inference.ipynb" style="color:var(--accent-primary); font-weight:600;">notebooks/02_model_metadata_and_python_inference.ipynb</a></p>
+        </div>
+      </div>

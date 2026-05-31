@@ -1,0 +1,27 @@
+<p>Huấn luyện một mô hình AI giống như xây dựng một ngôi nhà lớn. Nhưng khi đưa ngôi nhà đó lên chiếc thuyền di động, chúng ta phải tối giản nó. **Quantization (Lượng tử hóa)** chính là công cụ tối giản tối thượng.</p>
+
+      <h2>1. Bản chất của số thực Float32 trong AI</h2>
+      <p>Khi máy tính train mô hình AI, mọi trọng số (weights) và giá trị kích hoạt (activations) đều được lưu trữ dưới dạng **Float32 (Số thực dấu phẩy động 32-bit)**. Mỗi số thực này chiếm **4 Bytes** bộ nhớ.</p>
+      <ul>
+        <li>Nếu một mô hình chứa **100 triệu tham số (100M parameters)**, kích thước file trên đĩa cứng sẽ là: $100,000,000 	imes 4 	ext{ Bytes} = 400 	ext{ MB}$.</li>
+        <li>Kích thước này là quá nặng cho một ứng dụng di động tải về và chiếm quá nhiều RAM khi hoạt động.</li>
+      </ul>
+
+      <h2>2. Lượng tử hóa (Quantization) là gì?</h2>
+      <p>Quantization là quá trình ánh xạ (ép) các số thực **Float32** (chạy từ vô hạn giá trị thực cực nhỏ) về các số nguyên nhỏ hơn, điển hình là **Int8 (Số nguyên 8-bit)** hoặc **Float16**.</p>
+      
+      <div class="math-block">
+        Mỗi số Int8 chỉ chiếm <strong>1 Byte</strong> (tiết kiệm 75% dung lượng so với Float32!)
+      </div>
+
+      <h2>3. 3 Lý do cốt lõi bạn phải dùng Quantization trên Mobile</h2>
+      
+      <div class="callout callout-important">
+        <i data-lucide="cpu" class="callout-icon"></i>
+        <div class="callout-content">
+          <span class="callout-title">Tại sao Quantization giúp tăng tốc độ thần kỳ?</span>
+          <p>1. <strong>Giảm dung lượng file lưu trữ (Kích thước App):</strong> Mô hình 100M params ở dạng Int8 sẽ giảm từ 400MB xuống chỉ còn **100MB**. Người dùng sẽ dễ dàng tải app hơn.</p>
+          <p>2. <strong>Giảm băng thông bộ nhớ RAM (Memory Bandwidth):</strong> Việc đọc 1 byte từ RAM vào CPU nhanh hơn gấp 4 lần việc đọc 4 byte. Đây là nút thắt cổ chai lớn nhất gây chậm hiệu năng trên điện thoại.</p>
+          <p>3. <strong>Tính toán siêu tốc trên phần cứng:</strong> Hầu hết chip CPU di động (ARM NEON) và chip AI NPU đều được trang bị tập lệnh tính toán số nguyên Int8 song song cực nhanh. Việc nhân 2 số nguyên Int8 tốn ít bóng bán dẫn và năng lượng hơn rất nhiều so với nhân 2 số thực Float32, giúp điện thoại **không bị nóng máy và tiết kiệm pin** tối đa.</p>
+        </div>
+      </div>
