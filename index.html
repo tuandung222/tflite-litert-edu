@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiteRT (TFLite) Mobile AI Academy 📱</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+  <!-- Top Glassmorphic Navigation -->
+  <header class="app-header">
+    <div class="header-logo">
+      <i data-lucide="cpu" class="logo-icon"></i>
+      <span class="logo-text">LiteRT <span class="accent-text">Academy</span></span>
+    </div>
+    <div class="header-tag">
+      <span class="badge">Education Hub v1.0</span>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <!-- Navigation Sidebar -->
+    <aside class="app-sidebar">
+      <div class="search-box">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="lesson-search" placeholder="Tìm kiếm bài học...">
+      </div>
+      
+      <div class="progress-container">
+        <div class="progress-bar-label">
+          <span>Tiến độ học tập</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- Module 1 -->
+        <div class="nav-module">
+          <div class="module-title">
+            <i data-lucide="compass" class="nav-icon"></i>
+            <span>Module 1: Nền Tảng Edge AI & LiteRT</span>
+          </div>
+          <ul class="module-lessons">
+            <li class="lesson-item active" data-lesson="1.1">
+              <span class="lesson-number">1.1</span>
+              <span class="lesson-name">Edge AI & Mobile AI là gì?</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="1.2">
+              <span class="lesson-number">1.2</span>
+              <span class="lesson-name">Từ TensorFlow Lite sang LiteRT</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="1.3">
+              <span class="lesson-number">1.3</span>
+              <span class="lesson-name">Kiến trúc bên trong LiteRT</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="1.4">
+              <span class="lesson-number">1.4</span>
+              <span class="lesson-name">Phần cứng và Delegates tăng tốc</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Module 2 -->
+        <div class="nav-module">
+          <div class="module-title">
+            <i data-lucide="git-branch" class="nav-icon"></i>
+            <span>Module 2: Tối Ưu Hóa & Vòng Đời</span>
+          </div>
+          <ul class="module-lessons">
+            <li class="lesson-item" data-lesson="2.1">
+              <span class="lesson-number">2.1</span>
+              <span class="lesson-name">Quy trình chuyển đổi Model</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="2.2">
+              <span class="lesson-number">2.2</span>
+              <span class="lesson-name">Tại sao cần Quantization?</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="2.3">
+              <span class="lesson-number">2.3</span>
+              <span class="lesson-name">Các phương pháp Quantization</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="2.4">
+              <span class="lesson-number">2.4</span>
+              <span class="lesson-name">Toán học đằng sau Quantization</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Module 3 -->
+        <div class="nav-module">
+          <div class="module-title">
+            <i data-lucide="smartphone" class="nav-icon"></i>
+            <span>Module 3: Triển Khai Trên Android</span>
+          </div>
+          <ul class="module-lessons">
+            <li class="lesson-item" data-lesson="3.1">
+              <span class="lesson-number">3.1</span>
+              <span class="lesson-name">Thiết lập Gradle & Assets</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="3.2">
+              <span class="lesson-number">3.2</span>
+              <span class="lesson-name">Load Model bằng MappedByteBuffer</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="3.3">
+              <span class="lesson-number">3.3</span>
+              <span class="lesson-name">Tiền xử lý hình ảnh (CameraX)</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="3.4">
+              <span class="lesson-number">3.4</span>
+              <span class="lesson-name">Chạy Inference trong Kotlin</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="3.5">
+              <span class="lesson-number">3.5</span>
+              <span class="lesson-name">Hậu xử lý & Vẽ đè Canvas</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Module 4 -->
+        <div class="nav-module">
+          <div class="module-title">
+            <i data-lucide="award" class="nav-icon"></i>
+            <span>Module 4: Case Studies Thực Chiến</span>
+          </div>
+          <ul class="module-lessons">
+            <li class="lesson-item" data-lesson="4.1">
+              <span class="lesson-number">4.1</span>
+              <span class="lesson-name">Classification: Nhận diện ảnh MobileNetV2</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="4.2">
+              <span class="lesson-number">4.2</span>
+              <span class="lesson-name">Embedding: Trích xuất đặc trưng văn bản</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="4.3">
+              <span class="lesson-number">4.3</span>
+              <span class="lesson-name">SLM: Chạy Mô hình Ngôn ngữ Gemma/Llama</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Module 5 -->
+        <div class="nav-module">
+          <div class="module-title">
+            <i data-lucide="book-open" class="nav-icon"></i>
+            <span>Module 5: Thực Hành (Jupyter Notebooks)</span>
+          </div>
+          <ul class="module-lessons">
+            <li class="lesson-item" data-lesson="5.1">
+              <span class="lesson-number">5.1</span>
+              <span class="lesson-name">Notebook 1: Python Quantization</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+            <li class="lesson-item" data-lesson="5.2">
+              <span class="lesson-number">5.2</span>
+              <span class="lesson-name">Notebook 2: Metadata & Run Python</span>
+              <i data-lucide="circle" class="status-icon"></i>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content Reader -->
+    <main class="app-main">
+      <div id="no-search-results" class="hidden">
+        <i data-lucide="frown" class="no-results-icon"></i>
+        <h3>Không tìm thấy bài học nào phù hợp</h3>
+        <p>Thử tìm kiếm với từ khóa khác như "quantization", "delegate", "kotlin"...</p>
+      </div>
+
+      <article class="lesson-content" id="lesson-viewer">
+        <!-- Content will be injected dynamically via app.js. 
+             This is a fallback for SEO and standard load -->
+        <div class="content-skeleton">
+          <h2>Đang tải bài giảng...</h2>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line"></div>
+        </div>
+      </article>
+
+      <!-- Sidebar widgets on desktop, inline on mobile -->
+      <section class="lesson-sidebar">
+        <!-- Quantization Simulator Widget -->
+        <div class="widget-card" id="widget-quant-sim">
+          <div class="widget-header">
+            <i data-lucide="sliders" class="widget-icon"></i>
+            <h4>Quantization Simulator 🔢</h4>
+          </div>
+          <p class="widget-desc">Mô phỏng cách LiteRT ánh xạ một số thực (float32) thành số nguyên 8-bit (int8).</p>
+          <div class="widget-body">
+            <div class="sim-control">
+              <label for="float-input">Giá trị thực (Float32): <span id="float-val">1.25</span></label>
+              <input type="range" id="float-input" min="-10" max="10" step="0.05" value="1.25">
+            </div>
+            
+            <div class="sim-parameters">
+              <div class="param-box">
+                <span class="param-label">Scale ($S$)</span>
+                <input type="number" id="param-scale" value="0.08" step="0.01" min="0.001">
+              </div>
+              <div class="param-box">
+                <span class="param-label">Zero-point ($Z$)</span>
+                <input type="number" id="param-zp" value="-5" step="1">
+              </div>
+            </div>
+
+            <div class="sim-formula">
+              $$q = \text{round}\left(\frac{r}{S}\right) + Z$$
+              <div class="formula-steps">
+                <span>$\frac{r}{S} = \frac{1.25}{0.08} = 15.625$</span>
+                <span>$\text{round}(15.625) = 16$</span>
+                <span>$16 + (-5) = 11$</span>
+              </div>
+            </div>
+
+            <div class="sim-result">
+              <div class="result-box">
+                <span class="res-lbl">Kết quả số nguyên 8-bit (int8)</span>
+                <span id="quant-result" class="res-val">11</span>
+              </div>
+              <div class="result-box">
+                <span class="res-lbl">De-quantized (Khôi phục thực)</span>
+                <span id="dequant-result" class="res-val">1.28</span>
+              </div>
+            </div>
+            <div class="sim-error">
+              <span>Sai số làm tròn (Quantization Error): </span>
+              <span id="quant-error" class="error-val">+0.03 (2.4%)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Android Pipeline Visualizer Widget -->
+        <div class="widget-card" id="widget-pipeline-vis">
+          <div class="widget-header">
+            <i data-lucide="activity" class="widget-icon"></i>
+            <h4>Android Inference Pipeline ⚙️</h4>
+          </div>
+          <p class="widget-desc">Các bước xử lý từ Camera thời gian thực đến kết quả hiển thị trên màn hình.</p>
+          <div class="widget-body">
+            <div class="pipeline-flow">
+              <div class="pipeline-step active" data-step="1">
+                <div class="step-num">1</div>
+                <div class="step-label">Camera Stream (YUV)</div>
+                <i data-lucide="chevron-right" class="arrow-icon"></i>
+              </div>
+              <div class="pipeline-step" data-step="2">
+                <div class="step-num">2</div>
+                <div class="step-label">Preprocessing (ByteBuffer)</div>
+                <i data-lucide="chevron-right" class="arrow-icon"></i>
+              </div>
+              <div class="pipeline-step" data-step="3">
+                <div class="step-num">3</div>
+                <div class="step-label">LiteRT Interpreter</div>
+                <i data-lucide="chevron-right" class="arrow-icon"></i>
+              </div>
+              <div class="pipeline-step" data-step="4">
+                <div class="step-num">4</div>
+                <div class="step-label">Postprocessing & Canvas</div>
+              </div>
+            </div>
+            <div class="pipeline-step-desc" id="step-description">
+              <strong>Bước 1: Camera Stream (YUV_420_888).</strong> Nhận khung hình từ CameraX dưới dạng YUV. Đây là dạng lưu trữ thô cực nhẹ, cần phải xoay và cắt về khung hình vuông (e.g., 224x224 hoặc 320x320) trước khi xử lý.
+            </div>
+            <button class="btn btn-primary" id="btn-next-step">Bước tiếp theo</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Lesson Data & Core Engine JS -->
+  <script src="app.js"></script>
+</body>
+</html>
